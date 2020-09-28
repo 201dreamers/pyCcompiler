@@ -4,7 +4,7 @@
 .code
 
 main PROC
-	mov eax, 4
+	mov eax, 2
 	ret
 main ENDP
 

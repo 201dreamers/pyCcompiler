@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import asdict
+
 from lexwrapper import LexWrapper
 from parserwrapper import ParserWrapper
+from errors import CodeError
 
 
 class ASTBuilder:
@@ -28,7 +31,11 @@ class ASTBuilder:
         parser_wrapper.parse()
 
         parser = parser_wrapper.build_parser()
-        self.parsed = parser.parse(self.tokens)
+        try:
+            self.parsed = parser.parse(self.tokens)
+        except CodeError as c_err:
+            print(c_err.message)
+            sys.exit(0)
 
     def build_tree(self):
         self.__build_lexer()

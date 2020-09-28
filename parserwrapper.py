@@ -2,6 +2,7 @@ from rply import ParserGenerator
 
 from lexwrapper import LexWrapper
 from nodes import Function, Return, Number
+from errors import CodeError
 
 
 class ParserWrapper:
@@ -18,9 +19,13 @@ class ParserWrapper:
             return Function(name=parsed[1].value, type_=parsed[0].value,
                             children=parsed[5])
 
-        @self.pg.production("functionbody : RETURN NUMBER semicolons")
+        @self.pg.production("functionbody : RETURN number semicolons")
         def fucntionbody(parsed):
-            return Return(value=Number(parsed[1].value))
+            return Return(value=parsed[1])
+
+        @self.pg.production("number : NUMBER")
+        def number(parsed):
+            return Number(parsed[0].value)
 
         @self.pg.production("semicolons : ;")
         @self.pg.production("semicolons : semicolons ;")
@@ -29,8 +34,16 @@ class ParserWrapper:
 
         @self.pg.error
         def error_handler(token):
-            raise ValueError(
-                f"Ran into a {token.gettokentype()} where it wasn't expected")
+            raise CodeError(token)
+
+    def set_line_number(self, parsed):
+        print('\n\n')
+        print(f'PARSED - {parsed}')
+        for token in parsed:
+            print(f'TOKEN: {token}')
+            if token:
+                pass
+                # print(f'{token.getsourcepos()}')
 
     def build_parser(self):
         return self.pg.build()
