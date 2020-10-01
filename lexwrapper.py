@@ -9,7 +9,7 @@ class LexWrapper:
         ('TYPE', r'\bint\b|\bfloat\b'),
         ('RETURN', r'\breturn\b'),
         ('DECIMAL', r'\d+(\.?\d*)'),
-        ('HEX', r'0[xX][a-zA-Z\d]+'),
+        ('HEX', r'0[xX][a-fA-F\d]+'),
         # ('IDENTIFIER', r'[a-z]\w*'),
         ('(', r'\('),
         (')', r'\)'),

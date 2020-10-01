@@ -13,54 +13,41 @@ class CodeGenerator:
             self._initialize_masm()
 
     def _initialize_fasm(self):
-        self.header = (
-            'format ELF64\n'
-            'public _start\n'
-        )
-
-        self.start_func = (
-            '_start:\n'
-            '\tcall exit\n'
-        )
-
-        self.exit_func = (
-            'exit:\n'
-            '\tmov rax, 1\n'
-            f'\tmov rbx, {self.return_value}\n'
-            '\tint 0x80\n'
-        )
-
-        self.generated_code = '\n'.join((
-            self.header,
-            self.start_func,
-            self.exit_func
-        ))
+        # TODO rewrite
+        pass
 
     def _initialize_masm(self):
         self.header = (
             '.386\n'
-            '.model flat, stdcall\n'
+            '.model flat, stdcall\n\n'
+            'include \\masm32\\include\\kernel32.inc\n'
+            'include \\masm32\\include\\user32.inc\n\n'
+            'includelib \\masm32\\lib\\kernel32.lib\n'
+            'includelib \\masm32\\lib\\user32.lib\n'
+            '\n'
+        )
+
+        self.data_segment = (
             '.data\n'
+            '\tCaption db "Hakman Dmytro IO-81 lab1", 0\n'
+            f'\tText db "{"-" * 15} Result of'
+            f' source program {"-" * 15}", 13, 10, '
+            f'"{self.return_value}", 0\n'
+            '\n'
+        )
+
+        self.code_segment = (
             '.code\n'
-        )
-
-        self.main_proc = (
-            'main PROC\n'
-            f'\tmov eax, {self.return_value}\n'
-            '\tret\n'
-            'main ENDP\n'
-        )
-
-        self.start_func = (
-            '_start:\n'
-            '\tinvoke main\n'
+            'start:\n'
+            '\tinvoke MessageBoxA, 0, ADDR Text, ADDR Caption, 0\n'
             '\tinvoke ExitProcess, 0\n'
+            'end start'
         )
 
         self.generated_code = '\n'.join((
             self.header,
-            self.main_proc,
-            self.start_func
+            self.data_segment,
+            self.code_segment
         ))
 
     def _walk_tree(self, node):
