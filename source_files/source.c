@@ -1,4 +1,4 @@
-int main () {
-    return 2 2;
+int main() {
+    return 0x910b;
 }
 

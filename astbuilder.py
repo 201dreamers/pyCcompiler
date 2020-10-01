@@ -4,6 +4,8 @@ import json
 import sys
 from dataclasses import asdict
 
+from rply.errors import LexingError
+
 from lexwrapper import LexWrapper
 from parserwrapper import ParserWrapper
 from errors import CodeError
@@ -35,7 +37,11 @@ class ASTBuilder:
             self.parsed = parser.parse(self.tokens)
         except CodeError as c_err:
             print(c_err.message)
-            sys.exit(0)
+            sys.exit(1)
+        except LexingError as l_err:
+            err = CodeError(l_err)
+            print(err.message)
+            sys.exit(1)
 
     def build_tree(self):
         self.__build_lexer()

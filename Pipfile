@@ -9,7 +9,6 @@ pynvim = "*"
 pylama = "*"
 
 [packages]
-rply = "*"
 
 [requires]
 python_version = "3.8"

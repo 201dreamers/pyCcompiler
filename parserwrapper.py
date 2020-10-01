@@ -23,9 +23,10 @@ class ParserWrapper:
         def fucntionbody(parsed):
             return Return(value=parsed[1])
 
-        @self.pg.production("number : NUMBER")
+        @self.pg.production("number : HEX")
+        @self.pg.production("number : DECIMAL")
         def number(parsed):
-            return Number(parsed[0].value)
+            return Number(int(parsed[0].value))
 
         @self.pg.production("semicolons : ;")
         @self.pg.production("semicolons : semicolons ;")
