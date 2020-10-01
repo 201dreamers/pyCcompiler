@@ -1,3 +1,5 @@
+"""Module, contains Abstract Syntax Tree builder"""
+
 from __future__ import annotations
 
 import json
@@ -6,14 +8,16 @@ from dataclasses import asdict
 
 from rply.errors import LexingError
 
-from lexwrapper import LexWrapper
-from parserwrapper import ParserWrapper
-from errors import CodeError
+from compiler.lexwrapper import LexWrapper
+from compiler.parserwrapper import ParserWrapper
+from compiler.errors import CodeError
 
 
 class ASTBuilder:
     """Class for building Abstract Syntax Tree from main node
 
+    It creates lexer and parser, runs them and gets ready AST.
+    Also it could pretty print AST to console.
     AST - abstract syntax tree
     """
 
@@ -39,8 +43,8 @@ class ASTBuilder:
             print(c_err.message)
             sys.exit(1)
         except LexingError as l_err:
-            err = CodeError(l_err)
-            print(err.message)
+            l_err = CodeError(l_err)
+            print(l_err.message)
             sys.exit(1)
 
     def build_tree(self):

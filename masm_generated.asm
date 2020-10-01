@@ -10,7 +10,7 @@ includelib \masm32\lib\user32.lib
 
 .data
 	Caption db "Hakman Dmytro IO-81 lab1", 0
-	Text db "--------------- Result of source program ---------------", 13, 10, "0", 0
+	Text db "--------------- Result of source program ---------------", 13, 10, "0x11", 0
 
 
 .code

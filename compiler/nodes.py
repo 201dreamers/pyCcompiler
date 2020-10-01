@@ -26,20 +26,25 @@ class Node(AbstractNode):
 
 @dataclass
 class Function(AbstractNode):
+    """Represents node of function with its arguments in AST"""
+
     name: str
     type_: str
     id_: str = 'function'
     arguments: Optional[list, tuple] = field(default_factory=list)
-    children: Optional[list, tuple] = field(default_factory=list)
+    body: Optional[list, tuple] = field(default_factory=list)
 
 
 @dataclass
 class Return(AbstractNode):
-    value: Number
+    """Represents 'return' statement in AST"""
+
+    argument: Number
     id_: str = 'return'
 
 
 @dataclass
 class Number(AbstractNode):
+    """Represents number in AST"""
     value: Union[int, float]
     id_: str = 'number'

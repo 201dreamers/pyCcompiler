@@ -1,7 +1,5 @@
-from astbuilder import ASTBuilder
-
-
 class CodeGenerator:
+    """Class that creates assembly (masm) code from 'C' source code"""
 
     def __init__(self, node, asm_type: str = 'fasm'):
         self.return_value = self._walk_tree(node)
@@ -52,23 +50,13 @@ class CodeGenerator:
 
     def _walk_tree(self, node):
         if node.id_ == 'function' and node.name == 'main':
-            return self._walk_tree(node.children)
+            return self._walk_tree(node.body)
         elif node.id_ == 'return':
-            return self._walk_tree(node.value)
+            return self._walk_tree(node.argument)
         elif node.id_ == 'number':
             return node.value
 
     def write_to_file(self):
-        with open(f'source_files/{self.asm_type}_generated.asm', 'w')\
+        with open(f'{self.asm_type}_generated.asm', 'w')\
                 as asm_file:
             asm_file.write(self.generated_code)
-
-
-if __name__ == "__main__":
-    PATH_TO_SOURCE_FILE = 'source_files/source.c'
-
-    ast_builder = ASTBuilder(PATH_TO_SOURCE_FILE)
-    ast_builder.build_tree()
-
-    cg = CodeGenerator(ast_builder.parsed, asm_type='masm')
-    cg.write_to_file()
