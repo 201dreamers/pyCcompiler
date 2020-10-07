@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import asdict
 
 from rply.errors import LexingError
@@ -11,6 +10,7 @@ from rply.errors import LexingError
 from compiler.lexwrapper import LexWrapper
 from compiler.parserwrapper import ParserWrapper
 from compiler.errors import CodeError
+from compiler.miscellaneous import exit_compiler
 
 
 class ASTBuilder:
@@ -23,9 +23,13 @@ class ASTBuilder:
 
     def __init__(self, source_file: str):
         self.source_file = source_file
-
-        with open(source_file, 'r') as file:
-            self.source_code = file.read()
+        self.ast = None
+        try:
+            with open(source_file, 'r') as file:
+                self.source_code = file.read()
+        except FileNotFoundError:
+            print("ERROR: no source file '1-3-Python-IO-81-Hakman.txt")
+            exit_compiler(1)
 
     def __build_lexer(self):
         lexwrapper = LexWrapper()
@@ -41,11 +45,11 @@ class ASTBuilder:
             self.parsed = parser.parse(self.tokens)
         except CodeError as c_err:
             print(c_err.message)
-            sys.exit(1)
+            exit_compiler(1)
         except LexingError as l_err:
             l_err = CodeError(l_err)
             print(l_err.message)
-            sys.exit(1)
+            exit_compiler(1)
 
     def build_tree(self):
         self.__build_lexer()

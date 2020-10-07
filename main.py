@@ -9,7 +9,7 @@ from compiler.astbuilder import ASTBuilder
 from compiler.codegenerator import CodeGenerator
 
 
-PATH_TO_SOURCE_FILE = 'source.c'
+PATH_TO_SOURCE_FILE = '1-3-Python-IO-81-Hakman.txt'
 
 ast_builder = ASTBuilder(PATH_TO_SOURCE_FILE)
 ast_builder.build_tree()
@@ -17,3 +17,4 @@ ast_builder.print_ast()
 
 cg = CodeGenerator(ast_builder.parsed, asm_type='masm')
 cg.write_to_file()
+input("\nProgram has finished")

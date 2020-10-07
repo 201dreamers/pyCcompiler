@@ -57,6 +57,6 @@ class CodeGenerator:
             return node.value
 
     def write_to_file(self):
-        with open(f'{self.asm_type}_generated.asm', 'w')\
+        with open(f'1-3-Python-IO-81-Hakman.asm', 'w')\
                 as asm_file:
             asm_file.write(self.generated_code)

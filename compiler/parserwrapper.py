@@ -4,8 +4,7 @@ from rply import ParserGenerator
 
 from compiler.lexwrapper import LexWrapper
 from compiler.nodes import Function, Return, Number
-from compiler.errors import CodeError, WrongReturnType
-from compiler.miscellaneous import is_float
+from compiler.errors import CodeError
 
 
 class ParserWrapper:
@@ -24,8 +23,11 @@ class ParserWrapper:
         @self.pg.production(
             "program : TYPE MAIN ( ) { functionbody }")
         def program(parsed):
-            if parsed[0] == 'float' and not is_float(parsed[5].argument.value):
-                raise WrongReturnType(parsed[0], parsed[1])
+            if parsed[0].value == 'float':
+                parsed[5].argument.value = float(parsed[5].argument.value)
+            elif parsed[0].value == 'int':
+                parsed[5].argument.value = int(parsed[5].argument.value)
+
             main_func = Function(
                 name=parsed[1].value,
                 type_=parsed[0].value,
@@ -42,9 +44,9 @@ class ParserWrapper:
         @self.pg.production("number : DECIMAL")
         def number(parsed):
             if parsed[0].name == 'DECIMAL':
-                pass
+                parsed[0].value = float(parsed[0].value)
             elif parsed[0].name == 'HEX':
-                pass
+                parsed[0].value = int(parsed[0].value, base=16)
             return Number(value=parsed[0].value)
 
         @self.pg.production("semicolons : ;")

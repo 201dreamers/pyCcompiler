@@ -20,7 +20,7 @@ class Node(AbstractNode):
     id_: str
     children: Optional[list, tuple] = field(default_factory=list)
 
-    def add_chldren(self, children: Union[list, tuple]):
+    def add_children(self, children: Union[list, tuple]):
         self.children.extend(list(children))
 
 

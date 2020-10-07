@@ -14,7 +14,7 @@ class CodeError(Exception):
                             f" on line {err_pos.lineno},"
                             f" column {err_pos.colno}")
         else:
-            self.message = (f"ERROR: <'{err.gettokentype()}': {err.value}>"
+            self.message = (f"ERROR: ran into <{err.value}> where it wasn't expected"
                             f" on line {err_pos.lineno},"
                             f" column {err_pos.colno}")
         super().__init__(self.message)
