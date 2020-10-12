@@ -1,8 +1,9 @@
 class CodeGenerator:
     """Class that creates assembly (masm) code from 'C' source code"""
 
-    def __init__(self, node, asm_type: str = 'fasm'):
+    def __init__(self, node, output_file_name: str, asm_type: str = 'fasm'):
         self.return_value = self._walk_tree(node)
+        self.output_file_name = output_file_name
         self.asm_type = asm_type
 
         if self.asm_type == 'fasm':
@@ -50,13 +51,9 @@ class CodeGenerator:
 
     def _walk_tree(self, node):
         if node.id_ == 'function' and node.name == 'main':
-            return self._walk_tree(node.body)
-        elif node.id_ == 'return':
-            return self._walk_tree(node.argument)
-        elif node.id_ == 'number':
-            return node.value
+            return node.visit()
 
     def write_to_file(self):
-        with open(f'1-3-Python-IO-81-Hakman.asm', 'w')\
+        with open(self.output_file_name, 'w')\
                 as asm_file:
             asm_file.write(self.generated_code)

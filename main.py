@@ -5,16 +5,15 @@ For proper work of my compiler you need to install 'rply' from github manually
 because on PYPI there is older version.
 """
 
+from config import PATH_TO_SOURCE_FILE, PATH_TO_OUTPUT_FILE
 from compiler.astbuilder import ASTBuilder
 from compiler.codegenerator import CodeGenerator
 
-
-PATH_TO_SOURCE_FILE = '1-3-Python-IO-81-Hakman.txt'
 
 ast_builder = ASTBuilder(PATH_TO_SOURCE_FILE)
 ast_builder.build_tree()
 ast_builder.print_ast()
 
-cg = CodeGenerator(ast_builder.parsed, asm_type='masm')
+cg = CodeGenerator(ast_builder.parsed, PATH_TO_OUTPUT_FILE, asm_type='masm')
 cg.write_to_file()
 input("\nProgram has finished")

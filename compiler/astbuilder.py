@@ -21,14 +21,14 @@ class ASTBuilder:
     AST - abstract syntax tree
     """
 
-    def __init__(self, source_file: str):
-        self.source_file = source_file
+    def __init__(self, source_file_name: str):
+        self.source_file_name = source_file_name
         self.ast = None
         try:
-            with open(source_file, 'r') as file:
-                self.source_code = file.read()
+            with open(source_file_name, 'r') as source_file:
+                self.source_code = source_file.read()
         except FileNotFoundError:
-            print("ERROR: no source file '1-3-Python-IO-81-Hakman.txt")
+            print("ERROR: no source file '{source_file_name}'")
             exit_compiler(1)
 
     def __build_lexer(self):
