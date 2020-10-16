@@ -1,57 +1,73 @@
 class CodeGenerator:
     """Class that creates assembly (masm) code from 'C' source code"""
 
-    def __init__(self, node, output_file_name: str, asm_type: str = 'fasm'):
-        self.return_value = self._walk_tree(node)
+    def __init__(self, node, output_file_name: str):
+        self.start_node = node
         self.output_file_name = output_file_name
-        self.asm_type = asm_type
+        self.masm_code = None
+        self.data_segment = []
+        self.main_code = None
 
-        if self.asm_type == 'fasm':
-            self._initialize_fasm()
-        elif self.asm_type == 'masm':
-            self._initialize_masm()
-
-    def _initialize_fasm(self):
-        # TODO rewrite
-        pass
+        self._initialize_masm()
 
     def _initialize_masm(self):
-        self.header = (
-            '.386\n'
-            '.model flat, stdcall\n\n'
-            'include \\masm32\\include\\kernel32.inc\n'
-            'include \\masm32\\include\\user32.inc\n\n'
-            'includelib \\masm32\\lib\\kernel32.lib\n'
-            'includelib \\masm32\\lib\\user32.lib\n'
-            '\n'
-        )
+        self._walk_tree(self.start_node)
 
-        self.data_segment = (
-            '.data\n'
-            '\tCaption db "Hakman Dmytro IO-81 lab1", 0\n'
-            f'\tText db "{"-" * 15} Result of'
-            f' source program {"-" * 15}", 13, 10, '
-            f'"{self.return_value}", 0\n'
-            '\n'
-        )
-
-        self.code_segment = (
-            '.code\n'
-            'start:\n'
-            '\tinvoke MessageBoxA, 0, ADDR Text, ADDR Caption, 0\n'
-            '\tinvoke ExitProcess, 0\n'
+        self.masm_code = (
+            '.486',
+            '.model flat, stdcall',
+            'option casemap :none',
+            '',
+            'include \\masm32\\include\\windows.inc',
+            'include \\masm32\\macros\\macros.asm',
+            'include \\masm32\\include\\masm32.inc',
+            'include \\masm32\\include\\gdi32.inc',
+            'include \\masm32\\include\\user32.inc',
+            'include \\masm32\\include\\kernel32.inc',
+            'include \\masm32\\include\\msvcrt.inc',
+            'includelib \\masm32\\lib\\masm32.lib',
+            'includelib \\masm32\\lib\\gdi32.lib',
+            'includelib \\masm32\\lib\\user32.lib',
+            'includelib \\masm32\\lib\\kernel32.lib',
+            'includelib \\masm32\\lib\\msvcrt.lib',
+            '\n',
+            '.data',
+            *self.data_segment,
+            '',
+            '.code',
+            'start:',
+            '  print chr$("Hakman Dmytro IO-81 lab2", 13 ,10)',
+            '  print chr$("--- Result of the source code ---", 13, 10)',
+            '',
+            '  call main',
+            '  exit',
+            '',
+            'main proc',
+            '  push eax',
+            '  push ebx',
+            '  push ecx',
+            '  push edx',
+            '',
+            self.main_code,
+            '',
+            '  print str$(eax)',
+            '  print chr$(13, 10)',
+            '',
+            '  pop edx',
+            '  pop ecx',
+            '  pop ebx',
+            '  pop eax',
+            '',
+            '  ret',
+            'main endp',
             'end start'
         )
 
-        self.generated_code = '\n'.join((
-            self.header,
-            self.data_segment,
-            self.code_segment
-        ))
+        self.generated_code = '\n'.join(self.masm_code)
 
     def _walk_tree(self, node):
         if node.id_ == 'function' and node.name == 'main':
-            return node.visit()
+            self.main_code = '\n'.join(node.visit())
 
     def write_to_file(self):
         with open(self.output_file_name, 'w')\

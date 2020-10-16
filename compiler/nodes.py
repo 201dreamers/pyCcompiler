@@ -37,7 +37,8 @@ class Function(AbstractNode):
     body: Optional[list, tuple] = field(default_factory=list)
 
     def visit(self):
-        return self.body.visit()
+        for instruction in self.body:
+            return instruction.visit()
 
 
 @dataclass
@@ -58,35 +59,51 @@ class Expression(AbstractNode):
 
 
 @dataclass
-class UnaryOperation(Expression):
+class UnaryExpression(Expression):
     "Represents unary operation in 'C' language"
 
-    operand: Union[int, float]
+    value: Union[int, float]
     operator: str = '-'
     id_: str = 'unary_op'
 
     def visit(self):
-        return - self.operand.visit()
+        if self.operator == '-':
+            code = [
+                f'  mov eax, -{int(self.operand)}'
+            ]
+        return code
 
 
 @dataclass
-class BinaryOperation(Expression):
+class BinaryExpression(Expression):
     "Represents binary operation in 'C' language"
 
-    left_operand: Union[int, float]
-    right_operand: Union[int, float]
+    left_operand: UnaryExpression
+    right_operand: UnaryExpression
     operator: str = '/'
     id_: str = 'binary_op'
 
     def visit(self):
-        return self.left_operand / self.right_operand
+        code = []
+        if isinstance(self.left_operand, UnaryExpression):
+            code.append(
+                f'  mov eax, -{int(self.left_operand.value)}'
+            )
+        else:
+            code.append(
+                f'  mov eax, {int(self.left_operand)}'
+            )
+        code.append('  cdq')
 
+        if isinstance(self.right_operand, UnaryExpression):
+            code.append(
+                f'  mov ebx, -{int(self.right_operand.value)}',
+            )
+        else:
+            code.append(
+                f'  mov ebx, {int(self.right_operand)}',
+            )
+        code.append('  cdq')
 
-# @dataclass
-# class Number(AbstractNode):
-#     """Represents number in AST"""
-#     value: Union[int, float]
-#     id_: str = 'number'
-
-#     def visit(self):
-#         return self.value
+        code.append('\n  idiv ebx')
+        return code

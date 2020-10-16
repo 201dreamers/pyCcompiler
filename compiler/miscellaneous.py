@@ -12,5 +12,5 @@ def is_float(number):
 
 
 def exit_compiler(code: int = 0):
-    input("Program has finished")
+    input("Program has finished. To exit press <Enter>")
     sys.exit(code)
