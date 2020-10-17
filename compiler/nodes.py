@@ -78,32 +78,34 @@ class UnaryExpression(Expression):
 class BinaryExpression(Expression):
     "Represents binary operation in 'C' language"
 
-    left_operand: UnaryExpression
-    right_operand: UnaryExpression
+    left_operand: Union[UnaryExpression, int, float]
+    right_operand: Union[UnaryExpression, int, float]
     operator: str = '/'
     id_: str = 'binary_op'
 
     def visit(self):
         code = []
         if isinstance(self.left_operand, UnaryExpression):
-            code.append(
-                f'  mov eax, -{int(self.left_operand.value)}'
-            )
+            left_operand_in_asm = f'-{int(self.left_operand.value)}'
+        elif isinstance(self.left_operand, BinaryExpression):
+            left_expression_code = self.left_operand.visit()
+            code.extend(left_expression_code)
+            left_operand_in_asm = 'eax'
+            pass
         else:
-            code.append(
-                f'  mov eax, {int(self.left_operand)}'
-            )
-        code.append('  cdq')
+            left_operand_in_asm = f'{int(self.left_operand)}'
 
         if isinstance(self.right_operand, UnaryExpression):
-            code.append(
-                f'  mov ebx, -{int(self.right_operand.value)}',
-            )
+            right_operand_in_asm = f'{-int(self.right_operand.value)}'
+        elif isinstance(self.right_operand, BinaryExpression):
+            right_expression_code = self.right_operand.visit()
+            code.extend(right_expression_code)
+            right_operand_in_asm = 'eax'
+            pass
         else:
-            code.append(
-                f'  mov ebx, {int(self.right_operand)}',
-            )
-        code.append('  cdq')
+            right_operand_in_asm = f'{int(self.right_operand)}'
 
-        code.append('\n  idiv ebx')
+        code.append(
+            f'\n  invoke divide, {left_operand_in_asm}, {right_operand_in_asm}'
+        )
         return code

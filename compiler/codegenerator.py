@@ -13,11 +13,13 @@ class CodeGenerator:
     def _initialize_masm(self):
         self._walk_tree(self.start_node)
 
-        self.masm_code = (
+        header = (
             '.486',
             '.model flat, stdcall',
             'option casemap :none',
-            '',
+        )
+
+        includes = (
             'include \\masm32\\include\\windows.inc',
             'include \\masm32\\macros\\macros.asm',
             'include \\masm32\\include\\masm32.inc',
@@ -30,7 +32,22 @@ class CodeGenerator:
             'includelib \\masm32\\lib\\user32.lib',
             'includelib \\masm32\\lib\\kernel32.lib',
             'includelib \\masm32\\lib\\msvcrt.lib',
-            '\n',
+        )
+
+        division_proc = (
+            'divide proc num1:DWORD, num2:DWORD',
+            '  mov eax, num1',
+            '  cdq',
+            '  idiv num2',
+            '  ret',
+            'divide endp'
+        )
+
+        self.masm_code = (
+            *header,
+            '',
+            *includes,
+            '',
             '.data',
             *self.data_segment,
             '',
@@ -38,9 +55,10 @@ class CodeGenerator:
             'start:',
             '  print chr$("Hakman Dmytro IO-81 lab2", 13 ,10)',
             '  print chr$("--- Result of the source code ---", 13, 10)',
-            '',
             '  call main',
             '  exit',
+            '',
+            *division_proc,
             '',
             'main proc',
             '  push eax',
@@ -48,7 +66,7 @@ class CodeGenerator:
             '  push ecx',
             '  push edx',
             '',
-            self.main_code,
+            *self.main_code,
             '',
             '  print str$(eax)',
             '  print chr$(13, 10)',
@@ -67,7 +85,7 @@ class CodeGenerator:
 
     def _walk_tree(self, node):
         if node.id_ == 'function' and node.name == 'main':
-            self.main_code = '\n'.join(node.visit())
+            self.main_code = node.visit()
 
     def write_to_file(self):
         with open(self.output_file_name, 'w')\

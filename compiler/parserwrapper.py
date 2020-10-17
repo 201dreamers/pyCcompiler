@@ -1,6 +1,7 @@
 """Module contains ParseWrapper for ParserGenerator from 'rply'"""
 
 from rply import ParserGenerator
+from rply.token import Token
 
 from compiler.lexwrapper import LexWrapper
 from compiler.nodes import (Function, Return, UnaryExpression,
@@ -65,12 +66,16 @@ class ParserWrapper:
         @self.pg.production("expression : number")
         @self.pg.production("expression : - expression")
         @self.pg.production("expression : expression / expression")
+        @self.pg.production("expression : ( expression )")
         def expression(parsed):
             if len(parsed) == 2:
                 return UnaryExpression(parsed[1])
             elif len(parsed) == 3:
-                return BinaryExpression(left_operand=parsed[0],
-                                        right_operand=parsed[2])
+                if isinstance(parsed[0], Token) and parsed[0].value == '(':
+                    return expression([parsed[1]])
+                else:
+                    return BinaryExpression(left_operand=parsed[0],
+                                            right_operand=parsed[2])
             return parsed[0]
 
         @self.pg.production("number : HEX")
