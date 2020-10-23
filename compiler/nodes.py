@@ -69,7 +69,7 @@ class UnaryExpression(Expression):
     def visit(self):
         if self.operator == '-':
             code = [
-                f'  mov eax, -{int(self.operand)}'
+                f'  mov eax, -{int(self.value)}'
             ]
         return code
 
