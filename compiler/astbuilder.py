@@ -9,8 +9,9 @@ from rply.errors import LexingError
 
 from compiler.lexwrapper import LexWrapper
 from compiler.parserwrapper import ParserWrapper
-from compiler.errors import CodeError
+from compiler import errors
 from compiler.miscellaneous import exit_compiler
+from config import logger
 
 
 class ASTBuilder:
@@ -28,7 +29,7 @@ class ASTBuilder:
             with open(source_file_name, 'r') as source_file:
                 self.source_code = source_file.read()
         except FileNotFoundError:
-            print("ERROR: no source file '{source_file_name}'")
+            print(f"ERROR: no source file '{self.source_file_name}'")
             exit_compiler(1)
 
     def __build_lexer(self):
@@ -43,11 +44,14 @@ class ASTBuilder:
         parser = parser_wrapper.build_parser()
         try:
             self.parsed = parser.parse(self.tokens)
-        except CodeError as c_err:
-            print(c_err.message)
+        except (errors.CodeError,
+                errors.VariableIsNotInitializedError,
+                errors.VariableDoesNotExistsError,
+                errors.DivisionByZeroError) as err:
+            print(err.message)
             exit_compiler(1)
         except LexingError as l_err:
-            l_err = CodeError(l_err)
+            l_err = errors.CodeError(l_err)
             print(l_err.message)
             exit_compiler(1)
 
@@ -58,4 +62,5 @@ class ASTBuilder:
         self.ast = asdict(self.parsed)
 
     def print_ast(self):
+        logger.debug(f'{self.ast=}')
         print(json.dumps(self.ast, indent=4))

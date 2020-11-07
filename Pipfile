@@ -7,8 +7,13 @@ verify_ssl = true
 jedi = "*"
 pynvim = "*"
 pylama = "*"
+loguru = "*"
 
 [packages]
+rply = "0.7.7"
 
 [requires]
 python_version = "3.8"
+
+[scripts]
+compile = "python main.py"

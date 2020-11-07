@@ -16,4 +16,4 @@ ast_builder.print_ast()
 
 cg = CodeGenerator(ast_builder.parsed, PATH_TO_OUTPUT_FILE)
 cg.write_to_file()
-input("\nProgram has finished. To exit press <Enter>")
+input("\nProgram has finished. To exit press <Enter>\n")

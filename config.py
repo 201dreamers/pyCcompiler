@@ -1,5 +1,9 @@
 import json
 
+from loguru import logger
+
+
+logger.add('debug.log', level='ERROR')
 
 CONFIG_FILE = 'settings.json'
 

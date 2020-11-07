@@ -1,3 +1,6 @@
+from compiler.nodes import Variable
+
+
 class CodeGenerator:
     """Class that creates assembly (masm) code from 'C' source code"""
 
@@ -5,7 +8,8 @@ class CodeGenerator:
         self.start_node = node
         self.output_file_name = output_file_name
         self.masm_code = None
-        self.data_segment = []
+        # self.data_segment = []
+        self.uninitialized_data_segment = None
         self.main_code = None
 
         self._initialize_masm()
@@ -18,7 +22,7 @@ class CodeGenerator:
             '.model flat, stdcall',
             'option casemap :none',
         )
-
+        # TODO Add return_result procedure to masm
         includes = (
             'include \\masm32\\include\\windows.inc',
             'include \\masm32\\macros\\macros.asm',
@@ -34,7 +38,7 @@ class CodeGenerator:
             'includelib \\masm32\\lib\\msvcrt.lib',
         )
 
-        division_proc = (
+        division_procedure = (
             'divide proc num1:DWORD, num2:DWORD',
             '  mov eax, num1',
             '  cdq',
@@ -43,38 +47,66 @@ class CodeGenerator:
             'divide endp'
         )
 
+        multiplication_procedure = (
+            'multiply proc num1:DWORD, num2:DWORD',
+            '  mov eax, num1',
+            '  cdq',
+            '  imul num2',
+            '  ret',
+            'multiply endp'
+        )
+
+        comparison_procedure = (
+            'compare proc num1:DWORD, num2:DWORD',
+            '  push ebx',
+            '  mov ebx, num2',
+            '  cmp num1, ebx',
+            '  je equal',
+            '  jg notequal',
+            '  jl notequal',
+            '  equal:',
+            '    mov eax, 1',
+            '    jmp stop',
+            '  notequal:',
+            '    mov eax, 0',
+            '    jmp stop',
+            '  stop:',
+            '    pop ebx',
+            '    ret',
+            '  jmp stop',
+            'compare endp'
+        )
+        self.uninitialized_data_segment = tuple(
+            Variable.generate_uninitialized_data_segment()
+        )
+
         self.masm_code = (
             *header,
             '',
             *includes,
             '',
-            '.data',
-            *self.data_segment,
+            '.data?',
+            *self.uninitialized_data_segment,
             '',
             '.code',
             'start:',
-            '  print chr$("Hakman Dmytro IO-81 lab2", 13 ,10)',
-            '  print chr$("--- Result of the source code ---", 13, 10)',
+            '  print chr$(13, 10, "-- Result of the source code --", 13, 10)',
             '  call main',
             '  exit',
             '',
-            *division_proc,
+            *multiplication_procedure,
+            '',
+            *division_procedure,
+            '',
+            *comparison_procedure,
             '',
             'main proc',
-            '  push eax',
-            '  push ebx',
-            '  push ecx',
-            '  push edx',
             '',
             *self.main_code,
             '',
+            '  pop eax',
             '  print str$(eax)',
             '  print chr$(13, 10)',
-            '',
-            '  pop edx',
-            '  pop ecx',
-            '  pop ebx',
-            '  pop eax',
             '',
             '  ret',
             'main endp',

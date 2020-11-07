@@ -1,0 +1,4 @@
+{
+    "path_to_source_file": "source.c",
+    "path_to_output_file": "generated.asm"
+}

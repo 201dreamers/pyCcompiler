@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "a749e67e7dd2b45f624b166ab853322cb918cc25116251fcec9f7326509f1e0d"
+            "sha256": "0e6be9357050c9bdb616ea1c6d7d377087815c59a7bd72a4ebfef0646746152f"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -15,7 +15,23 @@
             }
         ]
     },
-    "default": {},
+    "default": {
+        "appdirs": {
+            "hashes": [
+                "sha256:7d5d0167b2b1ba821647616af46a749d1c653740dd0d2415100fe26e27afdf41",
+                "sha256:a841dacd6b99318a741b166adb07e19ee71a274450e68237b4650ca1055ab128"
+            ],
+            "version": "==1.4.4"
+        },
+        "rply": {
+            "hashes": [
+                "sha256:2c8083bf2853642a0e24de9a9db3ce2d25b3153037a7298d2ff9434413744e33",
+                "sha256:4d6d25703efd28fb3d5707f7b3bd4fe66c306159a5c25af10ba26d206a66d00d"
+            ],
+            "index": "pypi",
+            "version": "==0.7.7"
+        }
+    },
     "develop": {
         "greenlet": {
             "hashes": [
@@ -47,6 +63,14 @@
             ],
             "index": "pypi",
             "version": "==0.17.2"
+        },
+        "loguru": {
+            "hashes": [
+                "sha256:b28e72ac7a98be3d28ad28570299a393dfcd32e5e3f6a353dec94675767b6319",
+                "sha256:f8087ac396b5ee5f67c963b495d615ebbceac2796379599820e324419d53667c"
+            ],
+            "index": "pypi",
+            "version": "==0.5.3"
         },
         "mccabe": {
             "hashes": [

@@ -17,14 +17,17 @@ class LexWrapper:
         ('RETURN', r'\breturn\b'),
         ('HEX', r'0[xX][a-fA-F\d]+'),
         ('DECIMAL', r'\d+(\.?\d*)'),
-        # ('IDENTIFIER', r'[a-z]\w*'),
         ('(', r'\('),
         (')', r'\)'),
         ('{', r'\{'),
         ('}', r'\}'),
         (';', r';'),
         ('-', r'-'),
-        ('/', r'/')
+        ('/', r'/'),
+        ('==', r'=='),
+        ('=', r'='),
+        ('*', r'\*'),
+        ('IDENTIFIER', r'[a-z]\w*'),
     )
 
     def __init__(self):
