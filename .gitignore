@@ -5,6 +5,7 @@ old
 __pycache__
 venv
 rply
-*1-3-Python-IO-81-Hakman.*
+*-3-Python-IO-81-Hakman.*
 *.exe
 *.log
+settings-lab.json
