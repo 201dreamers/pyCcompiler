@@ -1,6 +1,0 @@
-{
-    "python.linting.pylintEnabled": false,
-    "python.linting.pylamaEnabled": true,
-    "python.linting.enabled": true,
-    "python.pythonPath": "/home/hdimka/.local/share/virtualenvs/pyCcompiler-i60JoW4k/bin/python3.8"
-}
