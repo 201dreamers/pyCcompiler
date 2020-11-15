@@ -1,6 +1,7 @@
 old
 .code
 .idea
+.vscode
 __pycache__
 venv
 rply

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
+from pprint import pprint
 
 from rply.errors import LexingError
 
@@ -47,7 +48,9 @@ class ASTBuilder:
         except (errors.CodeError,
                 errors.VariableIsNotInitializedError,
                 errors.VariableDoesNotExistsError,
-                errors.DivisionByZeroError) as err:
+                errors.DivisionByZeroError,
+                errors.VariableAlreadyExistsError,
+                errors.NoReturnStatementInFunctionError) as err:
             print(err.message)
             exit_compiler(1)
         except LexingError as l_err:
@@ -62,5 +65,4 @@ class ASTBuilder:
         self.ast = asdict(self.parsed)
 
     def print_ast(self):
-        logger.debug(f'{self.ast=}')
         print(json.dumps(self.ast, indent=4))

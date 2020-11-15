@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Union, Optional, ClassVar, Literal
 from compiler.miscellaneous import is_float
-from compiler import errors
 from config import logger
 
 

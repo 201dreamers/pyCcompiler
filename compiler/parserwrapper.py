@@ -33,6 +33,14 @@ class ParserWrapper:
         @self.pg.production(
             'program : TYPE MAIN ( ) { function_body }')
         def program(parsed):
+            _has_return_statement = False
+            for line in parsed[5]:
+                if isinstance(line, Return):
+                    _has_return_statement = True
+                    break
+
+            if not _has_return_statement:
+                raise errors.NoReturnStatementInFunctionError(parsed[1].value)
             main_func = Function(
                 name=parsed[1].value,
                 type_=parsed[0].value,
@@ -67,6 +75,8 @@ class ParserWrapper:
                     raise errors.VariableDoesNotExistsError(parsed[0])
                 return _var
             elif parsed[0].name == 'TYPE':
+                if parsed[1].value in Variable.all_variables:
+                    raise errors.VariableAlreadyExistsError(parsed[1])
                 var = Variable(type_=parsed[0].value, name=parsed[1].value)
                 if len(parsed) == 4:
                     var.expression = parsed[3]

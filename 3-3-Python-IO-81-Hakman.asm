@@ -16,8 +16,8 @@ includelib \masm32\lib\kernel32.lib
 includelib \masm32\lib\msvcrt.lib
 
 .data?
-  a dd ?
-  b dd ?
+  var1 dd ?
+  var2 dd ?
 
 .code
 start:
@@ -59,10 +59,16 @@ compare endp
 
 main proc
 
-  mov a, 2
-  mov b, 4
+  mov var1, 12
+  mov var2, 2
+  neg var2
+  push var2
 
-  invoke divide, b, a
+  invoke multiply, var2, 2
+  push eax
+  pop eax
+
+  invoke divide, var1, eax
   push eax
 
   pop eax
