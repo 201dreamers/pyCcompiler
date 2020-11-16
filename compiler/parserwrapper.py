@@ -5,7 +5,7 @@ from rply.token import Token
 
 from compiler.lexwrapper import LexWrapper
 from compiler.nodes import (Function, Return, UnaryExpression,
-                            BinaryExpression, Variable)
+                            BinaryExpression, Variable, TernaryExpression)
 from compiler import errors
 from config import logger
 
@@ -21,6 +21,7 @@ class ParserWrapper:
         self.tokens = [token for token, regexp in LexWrapper.tokens]
         self.precedence = (
             ('left', ['=']),
+            ('left', ['?']),
             ('left', ['==']),
             ('left', ['*', '/']),
             ('left', ['-']),
@@ -31,7 +32,7 @@ class ParserWrapper:
     def parse(self):
 
         @self.pg.production(
-            'program : TYPE MAIN ( ) { function_body }')
+            'program : TYPE MAIN ( ) { body }')
         def program(parsed):
             _has_return_statement = False
             for line in parsed[5]:
@@ -49,9 +50,8 @@ class ParserWrapper:
 
             return main_func
 
-        @self.pg.production('function_body : instruction semicolons')
-        @self.pg.production(
-            'function_body : function_body instruction semicolons')
+        @self.pg.production('body : instruction semicolons')
+        @self.pg.production('body : body instruction semicolons')
         def function_body(parsed):
             body = []
             if (_len_of_parsed := len(parsed)) == 2:
@@ -85,9 +85,12 @@ class ParserWrapper:
             elif parsed[0].name == 'RETURN':
                 return Return(argument=parsed[1])
 
-        @self.pg.production('expression : number | variable')
-        @self.pg.production('expression : expression == expression | - expression')
-        @self.pg.production('expression : expression / expression | expression * expression')
+        @self.pg.production('expression : number | variable | - expression')
+        @self.pg.production('expression : expression == expression')
+        @self.pg.production(
+            'expression : expression / expression | expression * expression')
+        @self.pg.production(
+            'expression : expression ? expression COLON expression')
         @self.pg.production('expression : ( expression )')
         def expression(parsed):
             if (_len_of_parsed := len(parsed)) == 2:
@@ -102,6 +105,12 @@ class ParserWrapper:
                     return BinaryExpression(left_operand=parsed[0],
                                             right_operand=parsed[2],
                                             operator=parsed[1].value)
+            elif _len_of_parsed == 5:
+                return TernaryExpression(
+                    condition=parsed[0],
+                    left_operand=parsed[2],
+                    right_operand=parsed[4]
+                )
             return parsed[0]
 
         @self.pg.production('variable : IDENTIFIER')

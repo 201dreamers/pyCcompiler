@@ -17,6 +17,8 @@ class LexWrapper:
         ('RETURN', r'\breturn\b'),
         ('HEX', r'0[xX][a-fA-F\d]+'),
         ('DECIMAL', r'\d+(\.?\d*)'),
+        ('?', r'\?'),
+        ('COLON', r':'),
         ('(', r'\('),
         (')', r'\)'),
         ('{', r'\{'),
@@ -43,16 +45,3 @@ class LexWrapper:
         self.__add_rules()
 
         return self.lex_generator.build()
-
-
-if __name__ == '__main__':
-    PATH_TO_SOURCE_FILE = 'source_files/source.c'
-    with open(PATH_TO_SOURCE_FILE, 'r') as file:
-        source_code = file.read()
-
-    lex_wrapper = LexWrapper()
-    lexer = lex_wrapper.build_lexer()
-    tokens = lexer.lex(source_code)
-
-    for token in tokens:
-        print(token)

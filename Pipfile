@@ -5,6 +5,7 @@ verify_ssl = true
 
 [dev-packages]
 pylama = "*"
+loguru = "*"
 
 [packages]
 rply = {editable = true, path = "./rply"}

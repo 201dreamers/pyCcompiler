@@ -6,7 +6,7 @@ import sys
 def is_float(number):
     try:
         float(number)
-    except ValueError:
+    except (ValueError, TypeError):
         return False
     return True
 

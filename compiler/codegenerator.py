@@ -91,6 +91,9 @@ class CodeGenerator:
             'start:',
             '  print chr$(13, 10, "-- Result of the source code --", 13, 10)',
             '  call main',
+            '  print str$(eax)',
+            '  print chr$(13, 10)',
+            '  mov eax, input("To exit press <Enter>")'
             '  exit',
             '',
             *multiplication_procedure,
@@ -104,8 +107,6 @@ class CodeGenerator:
             *self.main_code,
             '',
             '  pop eax',
-            '  print str$(eax)',
-            '  print chr$(13, 10)',
             '',
             '  ret',
             'main endp',

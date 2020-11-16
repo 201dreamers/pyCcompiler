@@ -5,7 +5,7 @@ from loguru import logger
 
 logger.add('debug.log', level='ERROR')
 
-CONFIG_FILE = 'settings-lab.json'
+CONFIG_FILE = 'settings.json'
 
 with open(CONFIG_FILE, 'r') as conf_file:
     config_data = json.load(conf_file)

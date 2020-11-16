@@ -16,13 +16,16 @@ includelib \masm32\lib\kernel32.lib
 includelib \masm32\lib\msvcrt.lib
 
 .data?
-  a dd ?
-  b dd ?
+  chsl dd ?
+  ahsl dd ?
+  bhsl dd ?
 
 .code
 start:
   print chr$(13, 10, "-- Result of the source code --", 13, 10)
   call main
+  print str$(eax)
+  print chr$(13, 10)
   exit
 
 multiply proc num1:DWORD, num2:DWORD
@@ -59,15 +62,30 @@ compare endp
 
 main proc
 
-  mov a, 2
-  mov b, 4
+  mov chsl, 2
+  invoke compare, chsl, 2
+  push eax
+  pop eax
+  cmp eax, 0
+  je false35732
+  jne true35732
+  true35732:
+    invoke compare, 2, 3
+    push eax
+    jmp continue35732
+  false35732:
+    invoke compare, 4, 1
+    push eax
+    jmp continue35732
 
-  invoke divide, b, a
+  continue35732:
+  pop eax
+  mov ahsl, eax
+  mov bhsl, 4
+  invoke multiply, chsl, ahsl
   push eax
 
   pop eax
-  print str$(eax)
-  print chr$(13, 10)
 
   ret
 main endp
