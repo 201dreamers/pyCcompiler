@@ -93,7 +93,7 @@ class CodeGenerator:
             '  call main',
             '  print str$(eax)',
             '  print chr$(13, 10)',
-            '  mov eax, input("To exit press <Enter>")'
+            '  mov eax, input("To exit press <Enter>")',
             '  exit',
             '',
             *multiplication_procedure,

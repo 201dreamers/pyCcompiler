@@ -90,6 +90,11 @@ class Variable(AbstractNode):
                 _asm_code = self.expression.visit()
                 _asm_code.append('  pop eax')
                 _asm_code.append(f'  mov {self.name_with_salt}, eax')
+            elif isinstance(self.expression, Variable):
+                _asm_code.extend((
+                    f'  mov eax, {self.expression.name_with_salt}',
+                    f'  mov {self.name_with_salt}, eax'
+                ))
             else:
                 _asm_code.append(
                     f'  mov {self.name_with_salt}, {self.expression}')

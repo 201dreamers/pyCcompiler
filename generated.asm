@@ -26,6 +26,7 @@ start:
   call main
   print str$(eax)
   print chr$(13, 10)
+  mov eax, input("To exit press <Enter>")
   exit
 
 multiply proc num1:DWORD, num2:DWORD
@@ -67,23 +68,38 @@ main proc
   push eax
   pop eax
   cmp eax, 0
-  je false35732
-  jne true35732
-  true35732:
+  je false14365
+  jne true14365
+  true14365:
     invoke compare, 2, 3
     push eax
-    jmp continue35732
-  false35732:
-    invoke compare, 4, 1
+    jmp continue14365
+  false14365:
+    mov eax, 3
     push eax
-    jmp continue35732
+    jmp continue14365
 
-  continue35732:
+  continue14365:
   pop eax
   mov ahsl, eax
-  mov bhsl, 4
-  invoke multiply, chsl, ahsl
+  mov eax, ahsl
+  mov bhsl, eax
+  invoke compare, chsl, 2
   push eax
+  pop eax
+  cmp eax, 0
+  je false72315
+  jne true72315
+  true72315:
+    mov eax, 7
+    push eax
+    jmp continue72315
+  false72315:
+    mov eax, 9
+    push eax
+    jmp continue72315
+
+  continue72315:
 
   pop eax
 
