@@ -16,9 +16,6 @@ includelib \masm32\lib\kernel32.lib
 includelib \masm32\lib\msvcrt.lib
 
 .data?
-  chsl dd ?
-  ahsl dd ?
-  bhsl dd ?
 
 .code
 start:
@@ -63,43 +60,15 @@ compare endp
 
 main proc
 
-  mov chsl, 2
-  invoke compare, chsl, 2
+  mov eax, 5
+  neg eax
   push eax
   pop eax
-  cmp eax, 0
-  je false14365
-  jne true14365
-  true14365:
-    invoke compare, 2, 3
-    push eax
-    jmp continue14365
-  false14365:
-    mov eax, 3
-    push eax
-    jmp continue14365
-
-  continue14365:
-  pop eax
-  mov ahsl, eax
-  mov eax, ahsl
-  mov bhsl, eax
-  invoke compare, chsl, 2
+  neg eax
   push eax
   pop eax
-  cmp eax, 0
-  je false72315
-  jne true72315
-  true72315:
-    mov eax, 7
-    push eax
-    jmp continue72315
-  false72315:
-    mov eax, 9
-    push eax
-    jmp continue72315
-
-  continue72315:
+  neg eax
+  push eax
 
   pop eax
 

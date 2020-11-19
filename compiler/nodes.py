@@ -147,23 +147,30 @@ class Expression(AbstractNode, ABC):
 class UnaryExpression(Expression):
     """Represents unary operation in 'C' language"""
 
-    value: Union[int, float, Variable]
+    value: Union[int, float, Variable, Expression]
     operator: str = '-'
     id_: str = 'unary_op'
 
     def visit(self):
         _asm_code = []
-        if isinstance(self.value, Variable):
-            _asm_code.extend((
-                f'  neg {self.value.name_with_salt}',
-                f'  push {self.value.name_with_salt}'
-            ))
-        else:
-            _asm_code.extend((
-                f'  mov eax, {int(self.value)}',
-                '  neg eax',
-                '  push eax'
-            ))
+
+        code_of_expression,\
+            operand_in_asm = Expression._process_operand(
+                self.value)
+        _asm_code.extend(code_of_expression)
+
+        if operand_in_asm == 'reg':
+            _asm_code.append('  pop eax')
+            operand_in_asm = 'eax'
+        elif is_float(self.value):
+            _asm_code.append(f'  mov eax, {int(self.value)}')
+            operand_in_asm = 'eax'
+
+        _asm_code.extend((
+            f'  neg {operand_in_asm}',
+            f'  push {operand_in_asm}'
+        ))
+
         return _asm_code
 
 
@@ -253,6 +260,9 @@ class TernaryExpression(Expression):
 
         if condition_in_asm == 'reg':
             code_of_condition.append('  pop eax')
+            condition_in_asm = 'eax'
+        elif is_float(condition_in_asm):
+            code_of_condition.append(f'  mov eax, {condition_in_asm}')
             condition_in_asm = 'eax'
 
         if not code_of_left_expression:

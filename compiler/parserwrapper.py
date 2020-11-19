@@ -7,7 +7,6 @@ from compiler.lexwrapper import LexWrapper
 from compiler.nodes import (Function, Return, UnaryExpression,
                             BinaryExpression, Variable, TernaryExpression)
 from compiler import errors
-from config import logger
 
 
 class ParserWrapper:

@@ -1,9 +1,10 @@
 import json
+import sys
 
-from loguru import logger
 
-
-logger.add('debug.log', level='ERROR')
+if not sys.warnoptions:
+    import warnings
+    warnings.simplefilter("ignore")
 
 CONFIG_FILE = 'settings.json'
 

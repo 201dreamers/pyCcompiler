@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from pprint import pprint
 
 from rply.errors import LexingError
 
@@ -12,7 +11,6 @@ from compiler.lexwrapper import LexWrapper
 from compiler.parserwrapper import ParserWrapper
 from compiler import errors
 from compiler.miscellaneous import exit_compiler
-from config import logger
 
 
 class ASTBuilder:
