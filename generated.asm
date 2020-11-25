@@ -60,14 +60,7 @@ compare endp
 
 main proc
 
-  mov eax, 5
-  neg eax
-  push eax
-  pop eax
-  neg eax
-  push eax
-  pop eax
-  neg eax
+  invoke multiply, 7, 5
   push eax
 
   pop eax

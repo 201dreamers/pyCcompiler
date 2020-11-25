@@ -136,7 +136,6 @@ class ParserWrapper:
 
         @self.pg.error
         def error_handler(token):
-            logger.debug(f'{token=}')
             raise errors.CodeError(token)
 
     def build_parser(self):
