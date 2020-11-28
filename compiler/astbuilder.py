@@ -42,7 +42,7 @@ class ASTBuilder:
 
         parser = parser_wrapper.build_parser()
         try:
-            self.parsed = parser.parse(self.tokens)
+            self.program = parser.parse(self.tokens)
         except (errors.CodeError,
                 errors.VariableIsNotInitializedError,
                 errors.VariableDoesNotExistsError,
@@ -60,7 +60,7 @@ class ASTBuilder:
         self.__build_lexer()
         self.__build_parser()
 
-        self.ast = asdict(self.parsed)
+        self.ast = asdict(self.program)
 
     def print_ast(self):
         print(json.dumps(self.ast, indent=4))

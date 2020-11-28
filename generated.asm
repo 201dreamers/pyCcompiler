@@ -59,12 +59,26 @@ compare proc num1:DWORD, num2:DWORD
 compare endp
 
 main proc
-
-  invoke multiply, 7, 5
+  invoke multiply, 6, 5
   push eax
-
+  invoke compare, 7, 7
+  push eax
+  pop ebx
   pop eax
-
+  invoke divide, eax, ebx
+  push eax
+  invoke divide, 4, 2
+  push eax
+  pop ecx
+  invoke multiply, 2, ecx
+  push eax
+  pop eax
+  pop edx
+  invoke multiply, edx, eax
+  push eax
+  pop eax
   ret
 main endp
+
+
 end start

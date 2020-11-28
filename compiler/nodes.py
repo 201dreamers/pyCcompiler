@@ -1,27 +1,40 @@
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from typing import Union, Optional, ClassVar, Literal
-from abc import ABC, abstractmethod
 
 from compiler.miscellaneous import is_float
 
 
-class AbstractNode(ABC):
-    """Abstract class for representing node of Abstract Syntax Tree
+# class AbstractNode:
+#     """Abstract class for representing node of Abstract Syntax Tree
 
-    All successors must include 'id_' attribute
-    Can't initialize it here due to dataclass internal structure
-    """
-
-    @abstractmethod
-    def visit(self):
-        pass
+#     All successors must include 'id_' attribute
+#     Can't initialize it here due to dataclass internal structure
+#     """
+#     def visit(self):
+#         pass
 
 
 @dataclass
-class Function(AbstractNode):
+class Program:
+    """Represents node of function with its arguments in AST"""
+
+    contents: Union[list, tuple]
+    id_: str = 'program'
+
+    def visit(self):
+        asm_code = []
+        for function in self.contents:
+            if function is None:
+                continue
+            asm_code.extend(function.visit())
+
+        return asm_code
+
+
+@dataclass
+class Function:
     """Represents node of function with its arguments in AST"""
 
     name: str
@@ -29,38 +42,55 @@ class Function(AbstractNode):
     id_: str = 'function'
     arguments: Optional[Union[list, tuple]] = field(default_factory=list)
     body: Optional[Union[list, tuple]] = field(default_factory=list)
+    all_functions: ClassVar[dict] = dict()
+    SALT: ClassVar[str] = 'hsl'
+
+    def __post_init__(self):
+        if self.name == 'main':
+            self.name_with_salt = self.name
+        else:
+            self.name_with_salt = f'{self.name}{Function.SALT}'
+        key = self.name
+        Function.all_functions[key] = self
 
     def visit(self):
-        _asm_body_code = []
+        asm_code = [f'{self.name_with_salt} proc']
         for instruction in self.body:
             if instruction is None:
                 continue
-            _asm_body_code.extend(instruction.visit())
+            asm_code.extend(instruction.visit())
 
-        return _asm_body_code
+        asm_code.extend((
+            '  pop eax',
+            '  ret',
+            f'{self.name_with_salt} endp',
+            ''
+        ))
+
+        return asm_code
 
 
 @dataclass
-class Return(AbstractNode):
+class Return:
     """Represents 'return' statement in AST"""
 
     argument: Union[Expression, Variable, int, float]
     id_: str = 'return'
 
     def visit(self):
-        _asm_code = []
+        asm_code = []
         if isinstance(self.argument, Expression):
             return self.argument.visit()
         elif isinstance(self.argument, Variable):
-            _asm_code.append(f'  mov eax, {self.argument.name_with_salt}')
+            asm_code.append(f'  mov eax, {self.argument.name_with_salt}')
         elif is_float(self.argument):
-            _asm_code.append(f'  mov eax, {self.argument}')
-        _asm_code.append('  push eax')
-        return _asm_code
+            asm_code.append(f'  mov eax, {self.argument}')
+        asm_code.append('  push eax')
+        return asm_code
 
 
 @dataclass
-class Variable(AbstractNode):
+class Variable:
     """Represents variable in 'C' language"""
 
     type_: Literal['int', 'float']
@@ -85,26 +115,55 @@ class Variable(AbstractNode):
 
     def visit(self):
         if self.expression is not None:
-            _asm_code = []
+            asm_code = []
             if isinstance(self.expression, Expression):
-                _asm_code = self.expression.visit()
-                _asm_code.append('  pop eax')
-                _asm_code.append(f'  mov {self.name_with_salt}, eax')
+                asm_code = self.expression.visit()
+                asm_code.append('  pop eax')
+                asm_code.append(f'  mov {self.name_with_salt}, eax')
             elif isinstance(self.expression, Variable):
-                _asm_code.extend((
+                asm_code.extend((
                     f'  mov eax, {self.expression.name_with_salt}',
                     f'  mov {self.name_with_salt}, eax'
                 ))
             else:
-                _asm_code.append(
+                asm_code.append(
                     f'  mov {self.name_with_salt}, {self.expression}')
         else:
             return []
-        return _asm_code
+        return asm_code
 
 
-class Expression(AbstractNode, ABC):
+class Expression:
     """Base class for unary and binary operations"""
+
+    __inactive_regs = ['eax', 'ebx', 'ecx', 'edx']
+    __active_regs = []
+
+    @classmethod
+    def get_inactive_regs(cls):
+        return cls.__inactive_regs.copy()
+
+    @classmethod
+    def get_active_regs(cls):
+        return cls.__active_regs.copy()
+
+    @classmethod
+    def get_inactive_reg(cls):
+        reg = cls.__inactive_regs.pop(0)
+        cls.__active_regs.append(reg)
+        return reg
+
+    @classmethod
+    def set_reg_active(cls, reg):
+        if reg in cls.__inactive_regs:
+            cls.__inactive_regs.remove(reg)
+            cls.__active_regs.append(reg)
+
+    @classmethod
+    def set_reg_inactive(cls, reg):
+        if reg in cls.__active_regs:
+            cls.__inactive_regs.append(reg)
+            cls.__active_regs.remove(reg)
 
     @classmethod
     def operand_is_zero(cls, operand):
@@ -124,23 +183,68 @@ class Expression(AbstractNode, ABC):
 
     @staticmethod
     def _process_operand(operand):
-        _asm_code = []
+        asm_code = []
 
         if isinstance(operand, UnaryExpression):
-            _asm_code.extend(operand.visit())
+            asm_code.extend(operand.visit())
             if isinstance(operand.value, Variable):
                 operand_in_asm = operand.value.name_with_salt
             else:
                 operand_in_asm = 'reg'
         elif isinstance(operand, BinaryExpression):
-            _asm_code.extend(operand.visit())
+            asm_code.extend(operand.visit())
             operand_in_asm = 'reg'
         elif isinstance(operand, Variable):
             operand_in_asm = operand.name_with_salt
         else:
             operand_in_asm = f'{int(operand)}'
 
-        return _asm_code, operand_in_asm
+        return asm_code, operand_in_asm
+
+
+@dataclass
+class FunctionCall(Expression):
+
+    function: Function
+    arguments: Union[list, tuple] = field(default_factory=list)
+    id_: str = 'function_call'
+
+    def visit(self):
+        asm_code = []
+        arguments_in_asm = []
+
+        for argument in self.arguments:
+            asm_code_of_argument, _argument_in_asm = \
+                Expression._process_operand(argument)
+            asm_code.extend(asm_code_of_argument)
+            arguments_in_asm.appned(_argument_in_asm)
+
+        for idx, argument in enumerate(arguments_in_asm):
+            if argument == 'reg':
+                reg = Expression.get_inactive_reg()
+                asm_code.append(f'  pop {reg}')
+                arguments_in_asm[idx] = reg
+            elif is_float(self.value):
+                reg = Expression.get_inactive_reg()
+                asm_code.append(f'  mov {reg}, {int(self.value)}')
+                arguments_in_asm[idx] = reg
+
+        if arguments_in_asm:
+            repr_of_arguments_in_asm = ', '.join(arguments_in_asm)
+            asm_code.append(
+                f'  invoke {self.function.name_with_salt}, '
+                f'{repr_of_arguments_in_asm}'
+            )
+        else:
+            asm_code.append(f'  invoke {self.function.name_with_salt}')
+
+        for reg in Expression.get_active_regs():
+            if reg in arguments_in_asm:
+                Expression.set_reg_inactive(reg)
+
+        Expression.set_reg_active('eax')
+
+        return asm_code
 
 
 @dataclass
@@ -152,100 +256,115 @@ class UnaryExpression(Expression):
     id_: str = 'unary_op'
 
     def visit(self):
-        _asm_code = []
+        asm_code = []
 
-        code_of_expression,\
+        asm_code_of_expression,\
             operand_in_asm = Expression._process_operand(
                 self.value)
-        _asm_code.extend(code_of_expression)
+        asm_code.extend(asm_code_of_expression)
+
+        reg = Expression.get_inactive_reg()
 
         if operand_in_asm == 'reg':
-            _asm_code.append('  pop eax')
-            operand_in_asm = 'eax'
+            operand_in_asm = reg
+            asm_code.append(f'  pop {operand_in_asm}')
         elif is_float(self.value):
-            _asm_code.append(f'  mov eax, {int(self.value)}')
-            operand_in_asm = 'eax'
+            operand_in_asm = reg
+            asm_code.append(f'  mov {operand_in_asm}, {int(self.value)}')
 
-        _asm_code.extend((
+        asm_code.extend((
             f'  neg {operand_in_asm}',
             f'  push {operand_in_asm}'
         ))
 
-        return _asm_code
+        Expression.set_reg_inactive(reg)
+
+        return asm_code
 
 
 @dataclass
 class BinaryExpression(Expression):
     """Represents binary operation in 'C' language"""
 
-    left_operand: Union[UnaryExpression, Variable, int, float]
-    right_operand: Union[UnaryExpression, Variable, int, float]
+    left_operand: Union[Expression, Variable, int, float]
+    right_operand: Union[Expression, Variable, int, float]
     operator: Literal['/', '*', '==']
     id_: str = 'binary_op'
 
     def visit(self):
-        _asm_code = []
+        asm_code = []
 
         code_of_left_expression,\
             left_operand_in_asm = Expression._process_operand(
                 self.left_operand)
-        _asm_code.extend(code_of_left_expression)
+        asm_code.extend(code_of_left_expression)
 
         code_of_right_expression,\
             right_operand_in_asm = Expression._process_operand(
                 self.right_operand)
-        _asm_code.extend(code_of_right_expression)
+        asm_code.extend(code_of_right_expression)
+
+        local_active_regs = []
 
         if left_operand_in_asm == 'reg' and right_operand_in_asm == 'reg':
-            _asm_code.extend(
-                ('  pop ebx',
-                 '  pop eax')
+            left_operand_in_asm = Expression.get_inactive_reg()
+            right_operand_in_asm = Expression.get_inactive_reg()
+            asm_code.extend(
+                (f'  pop {right_operand_in_asm}',
+                 f'  pop {left_operand_in_asm}')
             )
-            left_operand_in_asm = 'eax'
-            right_operand_in_asm = 'ebx'
+            local_active_regs.append(left_operand_in_asm)
+            local_active_regs.append(right_operand_in_asm)
         elif left_operand_in_asm == 'reg':
-            _asm_code.append('  pop eax')
-            left_operand_in_asm = 'eax'
+            left_operand_in_asm = Expression.get_inactive_reg()
+            asm_code.append(f'  pop {left_operand_in_asm}')
+            local_active_regs.append(left_operand_in_asm)
         elif right_operand_in_asm == 'reg':
-            _asm_code.append('  pop eax')
-            right_operand_in_asm = 'eax'
+            right_operand_in_asm = Expression.get_inactive_reg()
+            asm_code.append(f'  pop {right_operand_in_asm}')
+            local_active_regs.append(right_operand_in_asm)
 
         if self.operator == '/':
-            _asm_code.append(
+            asm_code.append(
                 ('  invoke divide, '
                  f'{left_operand_in_asm}, '
                  f'{right_operand_in_asm}')
             )
-            _asm_code.append('  push eax')
         elif self.operator == '*':
-            _asm_code.append(
+            asm_code.append(
                 ('  invoke multiply, '
                  f'{left_operand_in_asm}, '
                  f'{right_operand_in_asm}')
             )
-            _asm_code.append('  push eax')
         elif self.operator == '==':
-            _asm_code.append(
+            asm_code.append(
                 ('  invoke compare, '
                  f'{left_operand_in_asm}, '
                  f'{right_operand_in_asm}')
             )
-            _asm_code.append('  push eax')
 
-        return _asm_code
+        asm_code.append('  push eax')
+
+        for reg in local_active_regs:
+            Expression.set_reg_inactive(reg)
+
+        Expression.set_reg_inactive('eax')
+
+        return asm_code
 
 
 @dataclass
 class TernaryExpression(Expression):
     """Represents binary operation in 'C' language"""
 
-    condition: Union[UnaryExpression, Variable, int, float]
-    left_operand: Union[UnaryExpression, Variable, int, float]
-    right_operand: Union[UnaryExpression, Variable, int, float]
+    condition: Union[Expression, Variable, int, float]
+    left_operand: Union[Expression, Variable, int, float]
+    right_operand: Union[Expression, Variable, int, float]
     id_: str = 'ternary_op'
+    DYNAMIC_SALT: ClassVar[int] = 0
 
     def visit(self):
-        _asm_code = []
+        asm_code = []
 
         code_of_condition, condition_in_asm = \
             Expression._process_operand(self.condition)
@@ -256,39 +375,50 @@ class TernaryExpression(Expression):
         code_of_right_expression, right_operand_in_asm = \
             Expression._process_operand(self.right_operand)
 
-        print()
+        local_active_regs = []
 
         if condition_in_asm == 'reg':
-            code_of_condition.append('  pop eax')
-            condition_in_asm = 'eax'
+            condition_in_asm = Expression.get_inactive_reg()
+            code_of_condition.append(f'  pop {condition_in_asm}')
+            local_active_regs.append(condition_in_asm)
         elif is_float(condition_in_asm):
-            code_of_condition.append(f'  mov eax, {condition_in_asm}')
-            condition_in_asm = 'eax'
+            reg = Expression.get_inactive_reg()
+            code_of_condition.append(f'  mov {reg}, {condition_in_asm}')
+            condition_in_asm = reg
+            local_active_regs.append(reg)
 
         if not code_of_left_expression:
-            code_of_left_expression = (f'  mov eax, {left_operand_in_asm}',
-                                       '  push eax')
+            reg = Expression.get_inactive_reg()
+            code_of_left_expression = (f'  mov {reg}, {left_operand_in_asm}',
+                                       f'  push {reg}')
+            Expression.set_reg_inactive(reg)
 
         if not code_of_right_expression:
-            code_of_right_expression = (f'  mov eax, {right_operand_in_asm}',
-                                        '  push eax')
+            reg = Expression.get_inactive_reg()
+            code_of_right_expression = (f'  mov {reg}, {right_operand_in_asm}',
+                                        f'  push {reg}')
+            Expression.set_reg_inactive(reg)
 
         indentation_separator = '\n  '
 
-        timestamp = time.monotonic_ns() % 100000
-        _asm_code.extend((
+        asm_code.extend((
             *code_of_condition,
             f'  cmp {condition_in_asm}, 0',
-            f'  je false{timestamp}',
-            f'  jne true{timestamp}',
-            f'  true{timestamp}:',
+            f'  je false{self.DYNAMIC_SALT}',
+            f'  jne true{self.DYNAMIC_SALT}',
+            f'  true{self.DYNAMIC_SALT}:',
             f'  {indentation_separator.join(code_of_left_expression)}',
-            f'    jmp continue{timestamp}',
-            f'  false{timestamp}:',
+            f'    jmp continue{self.DYNAMIC_SALT}',
+            f'  false{self.DYNAMIC_SALT}:',
             f'  {indentation_separator.join(code_of_right_expression)}',
-            f'    jmp continue{timestamp}',
+            f'    jmp continue{self.DYNAMIC_SALT}',
             '',
-            f'  continue{timestamp}:'
+            f'  continue{self.DYNAMIC_SALT}:'
         ))
 
-        return _asm_code
+        for reg in local_active_regs:
+            Expression.set_reg_inactive(reg)
+
+        self.DYNAMIC_SALT += 1
+
+        return asm_code

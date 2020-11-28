@@ -5,7 +5,8 @@ from rply.token import Token
 
 from compiler.lexwrapper import LexWrapper
 from compiler.nodes import (Function, Return, UnaryExpression,
-                            BinaryExpression, Variable, TernaryExpression)
+                            BinaryExpression, Variable, TernaryExpression,
+                            Program, FunctionCall)
 from compiler import errors
 
 
@@ -19,7 +20,7 @@ class ParserWrapper:
     def __init__(self):
         self.tokens = [token for token, regexp in LexWrapper.tokens]
         self.precedence = (
-            ('left', ['=']),
+            ('left', ['/=', '=']),
             ('left', ['?']),
             ('left', ['==']),
             ('left', ['*', '/']),
@@ -30,49 +31,83 @@ class ParserWrapper:
 
     def parse(self):
 
-        @self.pg.production(
-            'program : TYPE MAIN ( ) { body }')
+        @self.pg.production('program : contents')
         def program(parsed):
-            _has_return_statement = False
-            for line in parsed[5]:
-                if isinstance(line, Return):
-                    _has_return_statement = True
-                    break
+            if 'main' not in Function.all_functions.keys():
+                # TODO: Raise here error that main function is not exists
+                pass
 
-            if not _has_return_statement:
-                raise errors.NoReturnStatementInFunctionError(parsed[1].value)
-            main_func = Function(
-                name=parsed[1].value,
-                type_=parsed[0].value,
-                body=parsed[5]
-            )
+            return Program(contents=parsed[0])
 
-            return main_func
+        @self.pg.production('contents : function')
+        @self.pg.production('contents : contents function')
+        def contents(parsed):
+            _contents = []
+            if (_len_of_parsed := len(parsed)) == 1:
+                _contents.append(parsed[0])
+            elif _len_of_parsed == 2:
+                parsed[0].append(parsed[1])
+                _contents.extend(parsed[0])
 
-        @self.pg.production('body : instruction semicolons')
-        @self.pg.production('body : body instruction semicolons')
+            return _contents
+
+        @self.pg.production('function : TYPE IDENTIFIER ( ) { function_body }')
+        @self.pg.production('function : TYPE IDENTIFIER ( ) semicolons')
+        def function(parsed):
+            _function = Function.all_functions.get(parsed[1].value)
+            if _function is None:
+                _function = Function(
+                    name=parsed[1].value,
+                    type_=parsed[0].value,
+                )
+
+            if (len_of_parsed := len(parsed)) == 7:
+                has_return_statement = False
+                for line_of_code in parsed[5]:
+                    if isinstance(line_of_code, Return):
+                        has_return_statement = True
+                        break
+
+                if not has_return_statement:
+                    raise errors.NoReturnStatementInFunctionError(
+                        parsed[1].value)
+
+                _function.body = parsed[5]
+            elif len_of_parsed == 5:
+                return
+
+            return _function
+
+        @self.pg.production('function_body : instruction semicolons')
+        @self.pg.production(
+            'function_body : function_body instruction semicolons')
         def function_body(parsed):
-            body = []
-            if (_len_of_parsed := len(parsed)) == 2:
-                body.append(parsed[0])
-            elif _len_of_parsed == 3:
-                body.extend(parsed[0])
-                body.append(parsed[1])
+            _function_body = []
+            if (len_of_parsed := len(parsed)) == 2:
+                _function_body.append(parsed[0])
+            elif len_of_parsed == 3:
+                _function_body.extend(parsed[0])
+                _function_body.append(parsed[1])
 
-            return body
+            return _function_body
 
-        @self.pg.production('instruction : RETURN expression | variable')
+        @self.pg.production('instruction : RETURN expression')
         @self.pg.production('instruction : IDENTIFIER = expression')
+        @self.pg.production('instruction : IDENTIFIER /= expression')
         @self.pg.production('instruction : TYPE IDENTIFIER')
         @self.pg.production('instruction : TYPE IDENTIFIER = expression')
         def instruction(parsed):
             if parsed[0].name == 'IDENTIFIER':
-                if parsed[0].value in Variable.all_variables:
-                    _var = Variable.all_variables[parsed[0].value]
-                    _var.expression = parsed[2]
-                else:
-                    raise errors.VariableDoesNotExistsError(parsed[0])
-                return _var
+                var = variable([parsed[0]])
+                if parsed[1].name == '=':
+                    var.expression = parsed[2]
+                elif parsed[1].name == '/=':
+                    var.expression = BinaryExpression(
+                        left_operand=var,
+                        right_operand=expression,
+                        operator='/'
+                    )
+                return var
             elif parsed[0].name == 'TYPE':
                 if parsed[1].value in Variable.all_variables:
                     raise errors.VariableAlreadyExistsError(parsed[1])
@@ -85,6 +120,7 @@ class ParserWrapper:
                 return Return(argument=parsed[1])
 
         @self.pg.production('expression : number | variable | - expression')
+        @self.pg.production('expression : function_call')
         @self.pg.production('expression : expression == expression')
         @self.pg.production(
             'expression : expression / expression | expression * expression')
@@ -112,15 +148,25 @@ class ParserWrapper:
                 )
             return parsed[0]
 
+        @self.pg.production('function_call : IDENTIFIER ( ) ')
+        def function_call(parsed):
+            func = Function.all_functions.get(parsed[0].value)
+            if func is None:
+                # TODO: Raise error that no such function
+                pass
+
+            return FunctionCall(function=func)
+
         @self.pg.production('variable : IDENTIFIER')
         def variable(parsed):
-            if parsed[0].value in Variable.all_variables:
-                _var = Variable.all_variables[parsed[0].value]
-                if _var.expression is None:
-                    raise errors.VariableIsNotInitializedError(parsed[0])
-            else:
+            var = Variable.all_variables.get(parsed[0].value)
+            if var is None:
                 raise errors.VariableDoesNotExistsError(parsed[0])
-            return _var
+
+            if var.expression is None:
+                raise errors.VariableIsNotInitializedError(parsed[0])
+
+            return var
 
         @self.pg.production('number : DECIMAL | HEX')
         def number(parsed):

@@ -4,19 +4,16 @@ from compiler.nodes import Variable
 class CodeGenerator:
     """Class that creates assembly (masm) code from 'C' source code"""
 
-    def __init__(self, node, output_file_name: str):
-        self.start_node = node
+    def __init__(self, program, output_file_name: str):
+        self.program = program
         self.output_file_name = output_file_name
-        self.masm_code = None
-        # self.data_segment = []
+        self.procedures_from_source_code = None
         self.uninitialized_data_segment = None
-        self.main_code = None
+        self.code_of_program = None
 
         self._initialize_masm()
 
     def _initialize_masm(self):
-        self._walk_tree(self.start_node)
-
         header = (
             '.486',
             '.model flat, stdcall',
@@ -79,7 +76,9 @@ class CodeGenerator:
             Variable.generate_uninitialized_data_segment()
         )
 
-        self.masm_code = (
+        self.code_of_program = self.program.visit()
+
+        masm_code = (
             *header,
             '',
             *includes,
@@ -102,22 +101,12 @@ class CodeGenerator:
             '',
             *comparison_procedure,
             '',
-            'main proc',
+            *self.code_of_program,
             '',
-            *self.main_code,
-            '',
-            '  pop eax',
-            '',
-            '  ret',
-            'main endp',
             'end start'
         )
 
-        self.generated_code = '\n'.join(self.masm_code)
-
-    def _walk_tree(self, node):
-        if node.id_ == 'function' and node.name == 'main':
-            self.main_code = node.visit()
+        self.generated_code = '\n'.join(masm_code)
 
     def write_to_file(self):
         with open(self.output_file_name, 'w')\

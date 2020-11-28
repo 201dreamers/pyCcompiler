@@ -2,9 +2,11 @@ import json
 import sys
 
 
-if not sys.warnoptions:
-    import warnings
-    warnings.simplefilter("ignore")
+# sys.setrecursionlimit(10**5)
+
+# if not sys.warnoptions:
+#     import warnings
+#     warnings.simplefilter("ignore")
 
 CONFIG_FILE = 'settings.json'
 

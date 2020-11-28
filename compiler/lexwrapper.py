@@ -12,7 +12,7 @@ class LexWrapper:
     """
 
     tokens = (
-        ('MAIN', r'\bmain\b'),
+        # ('MAIN', r'\bmain\b'),
         ('TYPE', r'\bint\b|\bfloat\b'),
         ('RETURN', r'\breturn\b'),
         ('HEX', r'0[xX][a-fA-F\d]+'),
@@ -25,6 +25,7 @@ class LexWrapper:
         ('}', r'\}'),
         (';', r';'),
         ('-', r'-'),
+        ('/=', r'/='),
         ('/', r'/'),
         ('==', r'=='),
         ('=', r'='),
