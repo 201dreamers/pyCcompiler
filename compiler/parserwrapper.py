@@ -21,6 +21,7 @@ class ParserWrapper:
         self.tokens = [token for token, regexp in LexWrapper.tokens]
         self.precedence = (
             ('left', ['/=', '=']),
+            ('left', ['COLON']),
             ('left', ['?']),
             ('left', ['==']),
             ('left', ['*', '/']),
@@ -97,18 +98,7 @@ class ParserWrapper:
         @self.pg.production('instruction : TYPE IDENTIFIER')
         @self.pg.production('instruction : TYPE IDENTIFIER = expression')
         def instruction(parsed):
-            if parsed[0].name == 'IDENTIFIER':
-                var = variable([parsed[0]])
-                if parsed[1].name == '=':
-                    var.expression = parsed[2]
-                elif parsed[1].name == '/=':
-                    var.expression = BinaryExpression(
-                        left_operand=var,
-                        right_operand=expression,
-                        operator='/'
-                    )
-                return var
-            elif parsed[0].name == 'TYPE':
+            if parsed[0].name == 'TYPE':
                 if parsed[1].value in Variable.all_variables:
                     raise errors.VariableAlreadyExistsError(parsed[1])
                 var = Variable(type_=parsed[0].value, name=parsed[1].value)
@@ -116,6 +106,17 @@ class ParserWrapper:
                     var.expression = parsed[3]
                     return var
                 return
+            elif parsed[0].name == 'IDENTIFIER':
+                var = variable([parsed[0]])
+                if parsed[1].name == '=':
+                    var.expression = parsed[2]
+                elif parsed[1].name == '/=':
+                    var.expression = BinaryExpression(
+                        left_operand=var,
+                        right_operand=parsed[2],
+                        operator='/'
+                    )
+                return var
             elif parsed[0].name == 'RETURN':
                 return Return(argument=parsed[1])
 
@@ -123,7 +124,7 @@ class ParserWrapper:
         @self.pg.production('expression : function_call')
         @self.pg.production('expression : expression == expression')
         @self.pg.production(
-            'expression : expression / expression | expression * expression')
+            'expression : expression * expression | expression / expression')
         @self.pg.production(
             'expression : expression ? expression COLON expression')
         @self.pg.production('expression : ( expression )')

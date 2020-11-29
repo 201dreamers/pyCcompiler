@@ -184,7 +184,6 @@ class Expression:
     @staticmethod
     def _process_operand(operand):
         asm_code = []
-
         if isinstance(operand, UnaryExpression):
             asm_code.extend(operand.visit())
             if isinstance(operand.value, Variable):

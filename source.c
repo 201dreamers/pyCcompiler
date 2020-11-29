@@ -1,3 +1,12 @@
+int ccc() {
+    int a = 8;
+    a /= 4;
+    return a;
+}
+
 int main() {
-    return (6 * 5) / (7 == 7) * (2 * (4 / 2));
+    int cc = 8;
+    int b = ccc();
+    cc /= b;
+    return cc * 2;
 }
