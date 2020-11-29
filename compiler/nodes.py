@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Union, Optional, ClassVar, Literal
 
 from compiler.miscellaneous import is_float
@@ -16,12 +16,13 @@ from compiler.miscellaneous import is_float
 #         pass
 
 
-@dataclass
+@dataclass(init=False)
 class Program:
     """Represents node of function with its arguments in AST"""
 
-    contents: Union[list, tuple]
-    id_: str = 'program'
+    def __init__(self, contents: Union[list, tuple]):
+        self.contents = contents
+        self.id = 'program'
 
     def visit(self):
         asm_code = []
@@ -33,25 +34,25 @@ class Program:
         return asm_code
 
 
-@dataclass
+@dataclass(init=False)
 class Function:
     """Represents node of function with its arguments in AST"""
 
-    name: str
-    type_: str
-    id_: str = 'function'
-    arguments: Optional[Union[list, tuple]] = field(default_factory=list)
-    body: Optional[Union[list, tuple]] = field(default_factory=list)
     all_functions: ClassVar[dict] = dict()
     SALT: ClassVar[str] = 'hsl'
 
-    def __post_init__(self):
-        if self.name == 'main':
-            self.name_with_salt = self.name
-        else:
-            self.name_with_salt = f'{self.name}{Function.SALT}'
-        key = self.name
-        Function.all_functions[key] = self
+    def __init__(self, name: str, type_: str,
+                 arguments: Optional[Union[list, tuple]] = None,
+                 body: Optional[Union[list, tuple]] = None):
+        self.name = name
+        self.type = type_
+        self.id = 'function'
+        self.arguments = arguments if arguments is not None else list()
+        self.body = body if body is not None else list()
+        self.name_with_salt = self.name if self.name == 'main'\
+            else f'{self.name}{Function.SALT}'
+
+        Function.all_functions[self.name] = self
 
     def visit(self):
         asm_code = [f'{self.name_with_salt} proc']
@@ -70,12 +71,13 @@ class Function:
         return asm_code
 
 
-@dataclass
+@dataclass(init=False)
 class Return:
     """Represents 'return' statement in AST"""
 
-    argument: Union[Expression, Variable, int, float]
-    id_: str = 'return'
+    def __init__(self, argument: Union[Expression, Variable, int, float]):
+        self.argument = argument
+        self.id = 'return'
 
     def visit(self):
         asm_code = []
@@ -89,20 +91,22 @@ class Return:
         return asm_code
 
 
-@dataclass
+@dataclass(init=False)
 class Variable:
     """Represents variable in 'C' language"""
 
-    type_: Literal['int', 'float']
-    name: str
-    expression: Optional[
-        Union[UnaryExpression, BinaryExpression, int, float]] = None
-    id_: str = 'variable'
     all_variables: ClassVar[dict] = dict()
     SALT: ClassVar[str] = 'hsl'
 
-    def __post_init__(self):
+    def __init__(self, type_: Literal['int', 'float'], name: str,
+                 expression:  Optional[Union[
+                     UnaryExpression, BinaryExpression, int, float]] = None):
+        self.type = type_
+        self.name = name
+        self.expression = expression
+        self.id = 'variable'
         self.name_with_salt = f'{self.name}{Variable.SALT}'
+
         Variable.all_variables[self.name] = self
 
     @classmethod
@@ -201,12 +205,14 @@ class Expression:
         return asm_code, operand_in_asm
 
 
-@dataclass
+@dataclass(init=False)
 class FunctionCall(Expression):
 
-    function: Function
-    arguments: Union[list, tuple] = field(default_factory=list)
-    id_: str = 'function_call'
+    def __init__(
+            self, function: Function, arguments: Union[list, tuple] = None):
+        self.function = function
+        self.arguments = arguments if arguments is not None else list()
+        self.id = 'function_call'
 
     def visit(self):
         asm_code = []
@@ -246,13 +252,14 @@ class FunctionCall(Expression):
         return asm_code
 
 
-@dataclass
+@dataclass(init=False)
 class UnaryExpression(Expression):
     """Represents unary operation in 'C' language"""
 
-    value: Union[int, float, Variable, Expression]
-    operator: str = '-'
-    id_: str = 'unary_op'
+    def __init__(self, value: Union[int, float, Variable, Expression]):
+        self.value: Union[int, float, Variable, Expression]
+        self.operator = '-'
+        self.id = 'unary_op'
 
     def visit(self):
         asm_code = []
@@ -281,14 +288,17 @@ class UnaryExpression(Expression):
         return asm_code
 
 
-@dataclass
+@dataclass(init=False)
 class BinaryExpression(Expression):
     """Represents binary operation in 'C' language"""
 
-    left_operand: Union[Expression, Variable, int, float]
-    right_operand: Union[Expression, Variable, int, float]
-    operator: Literal['/', '*', '==']
-    id_: str = 'binary_op'
+    def __init__(self, left_operand: Union[Expression, Variable, int, float],
+                 right_operand: Union[Expression, Variable, int, float],
+                 operator: Literal['/', '*', '==']):
+        self.left_operand = left_operand
+        self.right_operand = right_operand
+        self.operator = operator
+        self.id = 'binary_op'
 
     def visit(self):
         asm_code = []
@@ -352,15 +362,19 @@ class BinaryExpression(Expression):
         return asm_code
 
 
-@dataclass
+@dataclass(init=False)
 class TernaryExpression(Expression):
     """Represents binary operation in 'C' language"""
 
-    condition: Union[Expression, Variable, int, float]
-    left_operand: Union[Expression, Variable, int, float]
-    right_operand: Union[Expression, Variable, int, float]
-    id_: str = 'ternary_op'
     DYNAMIC_SALT: ClassVar[int] = 0
+
+    def __init__(self, condition: Union[Expression, Variable, int, float],
+                 left_operand: Union[Expression, Variable, int, float],
+                 right_operand: Union[Expression, Variable, int, float]):
+        self.condition = condition
+        self.left_operand = left_operand
+        self.right_operand = right_operand
+        self.id = 'ternary_op'
 
     def visit(self):
         asm_code = []
