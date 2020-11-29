@@ -10,7 +10,7 @@ from rply.errors import LexingError
 from compiler.lexwrapper import LexWrapper
 from compiler.parserwrapper import ParserWrapper
 from compiler import errors
-from compiler.miscellaneous import exit_compiler
+from compiler.miscellaneous import exit_compiler, convert_to_dict
 
 
 class ASTBuilder:
@@ -60,7 +60,7 @@ class ASTBuilder:
         self.__build_lexer()
         self.__build_parser()
 
-        self.ast = asdict(self.program)
+        self.ast = convert_to_dict(self.program)
 
     def print_ast(self):
         print(json.dumps(self.ast, indent=4))
