@@ -76,7 +76,7 @@ class CodeGenerator:
             Variable.generate_uninitialized_data_segment()
         )
 
-        self.code_of_program = self.program.visit()
+        self.code_of_program = self.program.generate_asm_code()
 
         masm_code = (
             *header,

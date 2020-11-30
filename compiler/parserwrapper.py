@@ -156,7 +156,7 @@ class ParserWrapper:
                 # TODO: Raise error that no such function
                 pass
 
-            return FunctionCall(function=func)
+            return FunctionCall(function_name=func.name)
 
         @self.pg.production('variable : IDENTIFIER')
         def variable(parsed):

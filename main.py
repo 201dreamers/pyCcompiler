@@ -14,6 +14,6 @@ ast_builder = ASTBuilder(PATH_TO_SOURCE_FILE)
 ast_builder.build_tree()
 ast_builder.print_ast()
 
-cg = CodeGenerator(ast_builder.program, PATH_TO_OUTPUT_FILE)
+cg = CodeGenerator(ast_builder.parsed_program, PATH_TO_OUTPUT_FILE)
 cg.write_to_file()
 input("\nProgram has finished. To exit press <Enter>\n")

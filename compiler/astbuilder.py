@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict
 
 from rply.errors import LexingError
 
 from compiler.lexwrapper import LexWrapper
 from compiler.parserwrapper import ParserWrapper
 from compiler import errors
-from compiler.miscellaneous import exit_compiler, convert_to_dict
+from compiler.miscellaneous import exit_compiler
 
 
 class ASTBuilder:
@@ -23,7 +22,7 @@ class ASTBuilder:
 
     def __init__(self, source_file_name: str):
         self.source_file_name = source_file_name
-        self.ast = None
+        self.ast = dict()
         try:
             with open(source_file_name, 'r') as source_file:
                 self.source_code = source_file.read()
@@ -42,7 +41,7 @@ class ASTBuilder:
 
         parser = parser_wrapper.build_parser()
         try:
-            self.program = parser.parse(self.tokens)
+            self.parsed_program = parser.parse(self.tokens)
         except (errors.CodeError,
                 errors.VariableIsNotInitializedError,
                 errors.VariableDoesNotExistsError,
@@ -60,7 +59,8 @@ class ASTBuilder:
         self.__build_lexer()
         self.__build_parser()
 
-        self.ast = convert_to_dict(self.program)
+        stringyfied_ast = str(self.parsed_program)
+        self.ast = json.loads(stringyfied_ast)
 
     def print_ast(self):
         print(json.dumps(self.ast, indent=4))
