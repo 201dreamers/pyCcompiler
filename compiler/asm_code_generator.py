@@ -1,24 +1,20 @@
-from compiler.nodes import Variable
+from compiler.nodes import Function
 
 
-class CodeGenerator:
+class AsmCodeGenerator:
     """Class that creates assembly (masm) code from 'C' source code"""
 
-    def __init__(self, program, output_file_name: str):
+    def __init__(self, program):
         self.program = program
-        self.output_file_name = output_file_name
         self.procedures_from_source_code = None
-        self.uninitialized_data_segment = None
-        self.code_of_program = None
 
-        self._initialize_masm()
-
-    def _initialize_masm(self):
+    def __initialize_masm(self):
         header = (
             '.486',
             '.model flat, stdcall',
             'option casemap :none',
         )
+
         # TODO Add return_result procedure to masm
         includes = (
             'include \\masm32\\include\\windows.inc',
@@ -72,11 +68,13 @@ class CodeGenerator:
             '  jmp stop',
             'compare endp'
         )
-        self.uninitialized_data_segment = tuple(
-            Variable.generate_uninitialized_data_segment()
-        )
 
-        self.code_of_program = self.program.generate_asm_code()
+        # FIXME: Generate variables
+        # uninitialized_data_segment = tuple(
+        #     Function.generate_uninitialized_data_segment()
+        # )
+
+        code_of_program = self.program.generate_asm_code()
 
         masm_code = (
             *header,
@@ -84,7 +82,7 @@ class CodeGenerator:
             *includes,
             '',
             '.data?',
-            *self.uninitialized_data_segment,
+            # *uninitialized_data_segment,
             '',
             '.code',
             'start:',
@@ -101,14 +99,13 @@ class CodeGenerator:
             '',
             *comparison_procedure,
             '',
-            *self.code_of_program,
+            *code_of_program,
             '',
             'end start'
         )
 
         self.generated_code = '\n'.join(masm_code)
 
-    def write_to_file(self):
-        with open(self.output_file_name, 'w')\
-                as asm_file:
-            asm_file.write(self.generated_code)
+    def generate_asm_code(self, ):
+        self.__initialize_masm()
+        return self.generated_code

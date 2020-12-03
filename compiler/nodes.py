@@ -1,29 +1,21 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from typing import Union, Optional, ClassVar, Literal
 
-from compiler.miscellaneous import is_float
+from compiler.miscellaneous import is_number
 
 
-# class AbstractNode:
-#     """Abstract class for representing node of Abstract Syntax Tree
-
-#     All successors must include 'id_' attribute
-#     Can't initialize it here due to dataclass internal structure
-#     """
-#     def visit(self):
-#         pass
-
-
-@dataclass
 class Program:
     """Represents node of function with its arguments in AST"""
 
-    contents: Union[list, tuple]
-    id_: str = 'program'
+    __slots__ = ('id', 'contents')
+
     all_functions: ClassVar[dict] = dict()
     current_function_name: ClassVar[str] = None
+
+    def __init__(self, contents: Union[list, tuple]):
+        self.id: str = 'program'
+        self.contents = contents
 
     @classmethod
     def get_current_function(cls):
@@ -53,25 +45,29 @@ class Program:
 
         stringyfied_contents = ', '.join(contents)
 
-        return f'{{"id":"{self.id_}", "contents":[{stringyfied_contents}]}}'
+        return f'{{"id":"{self.id}", "contents":[{stringyfied_contents}]}}'
 
     def __str__(self):
         return self.generate_ast_representation()
 
 
-@dataclass
 class Function:
     """Represents node of function with its arguments in AST"""
 
-    name: str
-    type_: str
-    id_: str = 'function'
-    arguments: Optional[Union[list, tuple]] = field(default_factory=list)
-    body: Optional[Union[list, tuple]] = field(default_factory=list)
+    __slots__ = ('id', 'name', 'type', 'arguments', 'body', 'name_with_salt')
+
     all_variables: ClassVar[dict] = dict()
     SALT: ClassVar[str] = 'hsl'
 
-    def __post_init__(self):
+    def __init__(self, name: str, type_: str,
+                 arguments: Union[list, tuple] = None,
+                 body: Optional[Union[list, tuple]] = None):
+        self.id = 'function'
+        self.name = name
+        self.type = type_
+        self.arguments = arguments or list()
+        self.body = body or list()
+
         if self.name == 'main':
             self.name_with_salt = self.name
         else:
@@ -104,17 +100,19 @@ class Function:
 
         stringyfied_body = ', '.join(body)
 
-        return (f'{{"id":"{self.id_}", "name":"{self.name}",'
-                f' "type":"{self.type_}", "arguments":[],'
+        return (f'{{"id":"{self.id}", "name":"{self.name}",'
+                f' "type":"{self.type}", "arguments":[],'
                 f' "body":[{stringyfied_body}]}}')
 
 
-@dataclass
 class Return:
     """Represents 'return' statement in AST"""
 
-    argument: Union[Expression, Variable, int, float]
-    id_: str = 'return'
+    __slots__ = ('id', 'argument')
+
+    def __init__(self, argument: Union[Expression, Variable, int, float]):
+        self.id = 'return'
+        self.argument = argument
 
     def generate_asm_code(self):
         asm_code = []
@@ -122,7 +120,7 @@ class Return:
             return self.argument.generate_asm_code()
         elif isinstance(self.argument, Variable):
             asm_code.append(f'  mov eax, {self.argument.name_with_salt}')
-        elif is_float(self.argument):
+        elif is_number(self.argument):
             asm_code.append(f'  mov eax, {self.argument}')
         asm_code.append('  push eax')
 
@@ -136,20 +134,23 @@ class Return:
         else:
             stringyfied_argument = f'"{self.argument}"'
 
-        return f'{{"id":"{self.id_}", "argument":{stringyfied_argument}}}'
+        return f'{{"id":"{self.id}", "argument":{stringyfied_argument}}}'
 
 
-@dataclass
 class Variable:
     """Represents variable in 'C' language"""
 
-    type_: Literal['int', 'float']
-    name: str
-    expression: Optional[Union[Variable, Expression, int, float]] = None
-    id_: str = 'variable'
+    __slots__ = ('id', 'type', 'name', 'expression', 'name_with_salt')
+
     SALT: ClassVar[str] = 'hsl'
 
-    def __post_init__(self):
+    def __init__(self, type_: Literal['int', 'float'], name: str,
+                 expression: Optional[
+                     Union[Variable, Expression, int, float]] = None):
+        self.id = 'variable'
+        self.type = type_
+        self.name = name
+        self.expression = expression
         self.name_with_salt = f'{self.name}{Variable.SALT}'
         Function.all_variables[self.name] = self
 
@@ -158,7 +159,6 @@ class Variable:
         uninitialized_data_segment = []
         for var in cls.all_variables.values():
             uninitialized_data_segment.append(f'  {var.name_with_salt} dd ?')
-
         return uninitialized_data_segment
 
     def generate_asm_code(self):
@@ -186,13 +186,13 @@ class Variable:
                 self.expression.generate_ast_representation()
         elif isinstance(self.expression, Variable):
             stringyfied_expression = f'"{self.expression.name}"'
-        elif is_float(self.expression):
+        elif is_number(self.expression):
             stringyfied_expression = f'"{self.expression}"'
         else:
             stringyfied_expression = ""
 
-        return (f'{{"id":"{self.id_}", "name":"{self.name}",'
-                f' "type":"{self.type_}",'
+        return (f'{{"id":"{self.id}", "name":"{self.name}",'
+                f' "type":"{self.type}",'
                 f' "expression":{stringyfied_expression}}}')
 
 
@@ -239,7 +239,7 @@ class Expression:
         elif isinstance(operand, Variable):
             _is_zero = True if cls.operand_is_zero(operand.expression)\
                 else False
-        elif is_float(operand):
+        elif is_number(operand):
             _is_zero = True if operand == 0 else False
 
         return _is_zero
@@ -258,21 +258,26 @@ class Expression:
             operand_in_asm = 'reg'
         elif isinstance(operand, Variable):
             operand_in_asm = operand.name_with_salt
+        elif isinstance(operand, FunctionCall):
+            asm_code.extend(operand.generate_asm_code())
+            operand_in_asm = 'eax'
         else:
             operand_in_asm = f'{int(operand)}'
 
         return asm_code, operand_in_asm
 
 
-@dataclass
 class FunctionCall(Expression):
 
-    function_name: str
-    arguments: Union[list, tuple] = field(default_factory=list)
-    id_: str = 'function_call'
+    __slots__ = ('id', 'function_name', 'arguments', 'function')
 
-    def __post_init__(self):
-        self.function = Function.all_functions.get(self.function_name)
+    def __init__(self, function_name: str,
+                 arguments: Union[list, tuple] = None):
+        self.id = 'function_call'
+        self.function_name = function_name
+        self.arguments = arguments or list()
+
+        self.function = Program.all_functions.get(self.function_name)
 
     def generate_asm_code(self):
         asm_code = []
@@ -289,7 +294,7 @@ class FunctionCall(Expression):
                 reg = Expression.get_inactive_reg()
                 asm_code.append(f'  pop {reg}')
                 arguments_in_asm[idx] = reg
-            elif is_float(self.value):
+            elif is_number(self.value):
                 reg = Expression.get_inactive_reg()
                 asm_code.append(f'  mov {reg}, {int(self.value)}')
                 arguments_in_asm[idx] = reg
@@ -312,18 +317,20 @@ class FunctionCall(Expression):
         return asm_code
 
     def generate_ast_representation(self):
-
-        return (f'{{"id":"{self.id_}", "function_name":"{self.function_name}",'
+        return (f'{{"id":"{self.id}", "function_name":"{self.function_name}",'
                 f' "arguments":[]}}')
 
 
-@dataclass
 class UnaryExpression(Expression):
     """Represents unary operation in 'C' language"""
 
-    value: Union[int, float, Variable, Expression]
-    operator: str = '-'
-    id_: str = 'unary_op'
+    __slots__ = ('id', 'argument', 'operator')
+
+    def __init__(self, argument: Union[int, float, Variable, Expression],
+                 operator: str = '-'):
+        self.id = 'unary_op'
+        self.argument = argument
+        self.operator = operator
 
     def generate_asm_code(self):
         asm_code = []
@@ -338,7 +345,7 @@ class UnaryExpression(Expression):
         if operand_in_asm == 'reg':
             operand_in_asm = reg
             asm_code.append(f'  pop {operand_in_asm}')
-        elif is_float(self.value):
+        elif is_number(self.value):
             operand_in_asm = reg
             asm_code.append(f'  mov {operand_in_asm}, {int(self.value)}')
 
@@ -357,23 +364,27 @@ class UnaryExpression(Expression):
                 self.value.generate_ast_representation()
         elif isinstance(self.value, Variable):
             stringyfied_value = f'"{self.value.name}"'
-        elif is_float(self.value):
+        elif is_number(self.value):
             stringyfied_value = f'"{self.value}"'
         else:
             stringyfied_value = ""
 
-        return (f'{{"id":"{self.id_}", "operator":"{self.operator}",'
+        return (f'{{"id":"{self.id}", "operator":"{self.operator}",'
                 f' "value":{stringyfied_value}}}')
 
 
-@dataclass
 class BinaryExpression(Expression):
     """Represents binary operation in 'C' language"""
 
-    left_operand: Union[Expression, Variable, int, float]
-    right_operand: Union[Expression, Variable, int, float]
-    operator: Literal['/', '*', '==']
-    id_: str = 'binary_op'
+    __slots__ = ('id', 'left_operand', 'right_operand', 'operator')
+
+    def __init__(self, left_operand: Union[Expression, Variable, int, float],
+                 right_operand: Union[Expression, Variable, int, float],
+                 operator: Literal['/', '*', '==']):
+        self.id = 'binary_op'
+        self.left_operand = left_operand
+        self.right_operand = right_operand
+        self.operator = operator
 
     def generate_asm_code(self):
         asm_code = []
@@ -442,7 +453,7 @@ class BinaryExpression(Expression):
                 self.left_operand.generate_ast_representation()
         elif isinstance(self.left_operand, Variable):
             stringyfied_left_operand = f'"{self.left_operand.name}"'
-        elif is_float(self.left_operand):
+        elif is_number(self.left_operand):
             stringyfied_left_operand = f'"{self.left_operand}"'
         else:
             stringyfied_left_operand = ""
@@ -452,25 +463,30 @@ class BinaryExpression(Expression):
                 self.right_operand.generate_ast_representation()
         elif isinstance(self.right_operand, Variable):
             stringyfied_right_operand = f'"{self.right_operand.name}"'
-        elif is_float(self.right_operand):
+        elif is_number(self.right_operand):
             stringyfied_right_operand = f'"{self.right_operand}"'
         else:
             stringyfied_right_operand = ""
 
-        return (f'{{"id":"{self.id_}", "operator":"{self.operator}",'
+        return (f'{{"id":"{self.id}", "operator":"{self.operator}",'
                 f' "left_operand":{stringyfied_left_operand},'
                 f' "right_operand":{stringyfied_right_operand}}}')
 
 
-@dataclass
 class TernaryExpression(Expression):
     """Represents binary operation in 'C' language"""
 
-    condition: Union[Expression, Variable, int, float]
-    left_operand: Union[Expression, Variable, int, float]
-    right_operand: Union[Expression, Variable, int, float]
-    id_: str = 'ternary_op'
+    __slots__ = ('id', 'left_operand', 'right_operand', 'condition')
+
     DYNAMIC_SALT: ClassVar[int] = 0
+
+    def __init__(self, left_operand: Union[Expression, Variable, int, float],
+                 right_operand: Union[Expression, Variable, int, float],
+                 condition: Union[Expression, Variable, int, float]):
+        self.id = 'ternary_op'
+        self.left_operand = left_operand
+        self.right_operand = right_operand
+        self.condition = condition
 
     def generate_asm_code(self):
         asm_code = []
@@ -490,7 +506,7 @@ class TernaryExpression(Expression):
             condition_in_asm = Expression.get_inactive_reg()
             code_of_condition.append(f'  pop {condition_in_asm}')
             local_active_regs.append(condition_in_asm)
-        elif is_float(condition_in_asm):
+        elif is_number(condition_in_asm):
             reg = Expression.get_inactive_reg()
             code_of_condition.append(f'  mov {reg}, {condition_in_asm}')
             condition_in_asm = reg
@@ -538,7 +554,7 @@ class TernaryExpression(Expression):
                 self.left_operand.generate_ast_representation()
         elif isinstance(self.right_operand, Variable):
             stringyfied_left_operand = f'"{self.left_operand.name}"'
-        elif is_float(self.left_operand):
+        elif is_number(self.left_operand):
             stringyfied_left_operand = f'"{self.left_operand}"'
         else:
             stringyfied_left_operand = ""
@@ -548,11 +564,11 @@ class TernaryExpression(Expression):
                 self.right_operand.generate_ast_representation()
         elif isinstance(self.right_operand, Variable):
             stringyfied_right_operand = f'"{self.right_operand.name}"'
-        elif is_float(self.right_operand):
+        elif is_number(self.right_operand):
             stringyfied_right_operand = f'"{self.right_operand}"'
         else:
             stringyfied_right_operand = ""
 
-        return (f'{{"id":"{self.id_}", "condition":"{self.condition}",'
+        return (f'{{"id":"{self.id}", "condition":"{self.condition}",'
                 f' "left_operand":{stringyfied_left_operand},'
                 f' "right_operand":{stringyfied_right_operand}}}')

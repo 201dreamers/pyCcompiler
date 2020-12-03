@@ -16,8 +16,6 @@ includelib \masm32\lib\kernel32.lib
 includelib \masm32\lib\msvcrt.lib
 
 .data?
-  cchsl dd ?
-  bhsl dd ?
 
 .code
 start:
@@ -60,13 +58,23 @@ compare proc num1:DWORD, num2:DWORD
   jmp stop
 compare endp
 
+ccchsl proc
+  mov ahsl, 8
+  mov eax, ahsl
+  push eax
+  pop eax
+  ret
+ccchsl endp
+
 main proc
-  invoke multiply, bhsl, 2
+  invoke ccchsl
+  invoke multiply, eax, 2
   push eax
   pop eax
   mov cchsl, eax
   mov bhsl, 2
-  invoke multiply, bhsl, 2
+  invoke ccchsl
+  invoke multiply, eax, 2
   push eax
   pop eax
   mov cchsl, eax
