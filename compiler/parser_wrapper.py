@@ -5,8 +5,8 @@ from rply.token import Token
 
 from compiler import lexer_wrapper
 from compiler.nodes import (Function, Return, UnaryExpression,
-                            BinaryExpression, Variable, TernaryExpression,
-                            Program, FunctionCall)
+                            BinaryExpression, TernaryExpression,
+                            Program, FunctionCall, VariableInitialization)
 from compiler import errors
 
 
@@ -25,7 +25,7 @@ parser_generator = ParserGenerator(token_names, precedence=precedence)
 
 @parser_generator.production('program : contents')
 def program(parsed):
-    if 'main' not in Program.all_functions.keys():
+    if 'main' not in Program.get_functions().keys():
         # TODO: Raise here error that main function is not exists
         pass
 
@@ -46,21 +46,15 @@ def contents(parsed):
 
 
 @parser_generator.production(
-    'function : TYPE IDENTIFIER ( arguments ) { function_body }')
+    'function : function_initializer { function_body }')
 @parser_generator.production(
-    'function : TYPE IDENTIFIER ( arguments ) semicolons')
+    'function : function_initializer semicolons')
 def function(parsed):
-    _function = Program.all_functions.get(parsed[1].value)
-    if _function is None:
-        _function = Function(
-            name=parsed[1].value,
-            type_=parsed[0].value,
-            arguments=parsed[3]
-        )
+    _function = parsed[0]
 
-    if (len_of_parsed := len(parsed)) == 8:
+    if (len_of_parsed := len(parsed)) == 4:
         has_return_statement = False
-        for line_of_code in parsed[6]:
+        for line_of_code in parsed[2]:
             if isinstance(line_of_code, Return):
                 has_return_statement = True
                 break
@@ -69,9 +63,24 @@ def function(parsed):
             raise errors.NoReturnStatementInFunctionError(
                 parsed[1].value)
 
-        _function.body = parsed[6]
-    elif len_of_parsed == 6:
+        _function.body = parsed[2]
+    elif len_of_parsed == 2:
         return
+    return _function
+
+
+@parser_generator.production(
+    'function_initializer : TYPE IDENTIFIER ( arguments )')
+def function_initializer(parsed):
+    # TODO: rewrite unique key
+    unique_function_key = parsed[1].value
+    _function = Program.get_function(unique_function_key)
+    if _function is None:
+        _function = Function(
+            name=parsed[1].value,
+            type_=parsed[0].value,
+            arguments=parsed[3]
+        )
 
     return _function
 
@@ -101,26 +110,32 @@ def function_body(parsed):
 @parser_generator.production('instruction : TYPE IDENTIFIER')
 @parser_generator.production('instruction : TYPE IDENTIFIER = expression')
 def instruction(parsed):
-    # BUG: Variable generation when reassign exists
+    current_function = Program.get_current_function()
+
     if parsed[0].name == 'TYPE':
-        if parsed[1].value in Function.all_variables:
+        if current_function.variable_exists(parsed[1].value):
             raise errors.VariableAlreadyExistsError(parsed[1])
-        var = Variable(type_=parsed[0].value, name=parsed[1].value)
+
+        var_assignment = VariableInitialization(type_=parsed[0].value,
+                                                name=parsed[1].value)
         if len(parsed) == 4:
-            var.expression = parsed[3]
-            return var
+            var_assignment.expression = parsed[3]
+            return var_assignment
         return
+
     elif parsed[0].name == 'IDENTIFIER':
-        var = variable([parsed[0]])
+        var_assignment = VariableInitialization(name=parsed[0].value)
         if parsed[1].name == '=':
-            var.expression = parsed[2]
+            var_assignment.expression = parsed[2]
         elif parsed[1].name == '/=':
-            var.expression = BinaryExpression(
+            var = variable([parsed[0]])
+            var_assignment.expression = BinaryExpression(
                 left_operand=var,
                 right_operand=parsed[2],
                 operator='/'
             )
-        return var
+        return var_assignment
+
     elif parsed[0].name == 'RETURN':
         return Return(argument=parsed[1])
 
@@ -157,7 +172,8 @@ def expression(parsed):
 
 @parser_generator.production('function_call : IDENTIFIER ( ) ')
 def function_call(parsed):
-    func = Program.all_functions.get(parsed[0].value)
+    # TODO: rewrite with unique key
+    func = Program.get_function(parsed[0].value)
     if func is None:
         # TODO: Raise error that no such function
         pass
@@ -167,11 +183,11 @@ def function_call(parsed):
 
 @parser_generator.production('variable : IDENTIFIER')
 def variable(parsed):
-    var = Function.all_variables.get(parsed[0].value)
+    var = Program.get_current_function().get_variable(parsed[0].value)
     if var is None:
         raise errors.VariableDoesNotExistsError(parsed[0])
 
-    if var.expression is None:
+    if not var.is_initialized:
         raise errors.VariableIsNotInitializedError(parsed[0])
 
     return var

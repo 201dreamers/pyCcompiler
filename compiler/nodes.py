@@ -5,28 +5,53 @@ from typing import Union, Optional, ClassVar, Literal
 from compiler.miscellaneous import is_number
 
 
+Register = Literal['eax', 'ebx', 'ecx', 'edx']
+Operand = Union['Expression', 'Variable', int, float]
+
+
 class Program:
     """Represents node of function with its arguments in AST"""
 
     __slots__ = ('id', 'contents')
 
-    all_functions: ClassVar[dict] = dict()
-    current_function_name: ClassVar[str] = None
+    __all_functions = dict()
+    __current_function_name: ClassVar[str] = None
 
     def __init__(self, contents: Union[list, tuple]):
         self.id: str = 'program'
         self.contents = contents
 
     @classmethod
-    def get_current_function(cls):
-        func = cls.all_functions.get(cls.current_function_name)
-        if func is None:
-            # TODO: Throw error that function does not exists
-            pass
+    def add_function(cls, function: Function) -> None:
+        cls.__all_functions[function.unique_key] = function
 
-        return func
+    @classmethod
+    def get_function(cls, unique_key: str) -> Function | None:
+        return cls.__all_functions.get(unique_key)
 
-    def generate_asm_code(self):
+    @classmethod
+    def get_functions(cls) -> dict:
+        return cls.__all_functions.copy()
+
+    @classmethod
+    def get_current_function(cls) -> Function | None:
+        return cls.__all_functions.get(cls.__current_function_name)
+
+    @classmethod
+    def set_current_function(cls, function_name: str) -> None:
+        cls.__current_function_name = function_name
+
+    @classmethod
+    def generate_uninitialized_data_segment(cls) -> list:
+        uninitialized_data_segment: list = list()
+        for function in cls.__all_functions.values():
+            for variable in function.get_variables().values():
+                uninitialized_data_segment.append(
+                    f'  {variable.name_with_salt} dd ?')
+
+        return uninitialized_data_segment
+
+    def generate_asm_code(self) -> list:
         asm_code = []
         for function in self.contents:
             if function is None:
@@ -35,7 +60,7 @@ class Program:
 
         return asm_code
 
-    def generate_ast_representation(self):
+    def generate_ast_representation(self) -> str:
         contents = []
         for function in self.contents:
             if function is None:
@@ -43,9 +68,9 @@ class Program:
             contents.append(
                 function.generate_ast_representation())
 
-        stringyfied_contents = ', '.join(contents)
+        stringified_contents = ', '.join(contents)
 
-        return f'{{"id":"{self.id}", "contents":[{stringyfied_contents}]}}'
+        return f'{{"id":"{self.id}", "contents":[{stringified_contents}]}}'
 
     def __str__(self):
         return self.generate_ast_representation()
@@ -54,9 +79,9 @@ class Program:
 class Function:
     """Represents node of function with its arguments in AST"""
 
-    __slots__ = ('id', 'name', 'type', 'arguments', 'body', 'name_with_salt')
+    __slots__ = ('id', 'name', 'type', 'arguments', 'body', 'name_with_salt',
+                 'unique_key', '__all_variables')
 
-    all_variables: ClassVar[dict] = dict()
     SALT: ClassVar[str] = 'hsl'
 
     def __init__(self, name: str, type_: str,
@@ -67,15 +92,31 @@ class Function:
         self.type = type_
         self.arguments = arguments or list()
         self.body = body or list()
+        self.unique_key = self.name
 
         if self.name == 'main':
             self.name_with_salt = self.name
         else:
             self.name_with_salt = f'{self.name}{Function.SALT}'
-        key = self.name
-        Program.all_functions[key] = self
 
-    def generate_asm_code(self):
+        self.__all_variables = dict()
+
+        Program.add_function(self)
+        Program.set_current_function(self.unique_key)
+
+    def add_variable(self, variable: Variable) -> None:
+        self.__all_variables[variable.name] = variable
+
+    def get_variable(self, variable_name: str) -> Variable | None:
+        return self.__all_variables.get(variable_name)
+
+    def get_variables(self) -> dict:
+        return self.__all_variables.copy()
+
+    def variable_exists(self, variable_name: str) -> bool:
+        return variable_name in self.__all_variables.keys()
+
+    def generate_asm_code(self) -> list:
         asm_code = [f'{self.name_with_salt} proc']
         for instruction in self.body:
             if instruction is None:
@@ -91,18 +132,18 @@ class Function:
 
         return asm_code
 
-    def generate_ast_representation(self):
+    def generate_ast_representation(self) -> str:
         body = []
         for instruction in self.body:
             if instruction is None:
                 continue
             body.append(instruction.generate_ast_representation())
 
-        stringyfied_body = ', '.join(body)
+        stringified_body = ', '.join(body)
 
         return (f'{{"id":"{self.id}", "name":"{self.name}",'
                 f' "type":"{self.type}", "arguments":[],'
-                f' "body":[{stringyfied_body}]}}')
+                f' "body":[{stringified_body}]}}')
 
 
 class Return:
@@ -110,11 +151,11 @@ class Return:
 
     __slots__ = ('id', 'argument')
 
-    def __init__(self, argument: Union[Expression, Variable, int, float]):
+    def __init__(self, argument: Operand):
         self.id = 'return'
         self.argument = argument
 
-    def generate_asm_code(self):
+    def generate_asm_code(self) -> list:
         asm_code = []
         if isinstance(self.argument, Expression):
             return self.argument.generate_asm_code()
@@ -126,74 +167,97 @@ class Return:
 
         return asm_code
 
-    def generate_ast_representation(self):
+    def generate_ast_representation(self) -> str:
         if isinstance(self.argument, Expression):
-            stringyfied_argument = self.argument.generate_ast_representation()
+            stringified_argument = self.argument.generate_ast_representation()
         elif isinstance(self.argument, Variable):
-            stringyfied_argument = f'"{self.argument.name}"'
+            stringified_argument = f'"{self.argument.name}"'
         else:
-            stringyfied_argument = f'"{self.argument}"'
+            stringified_argument = f'"{self.argument}"'
 
-        return f'{{"id":"{self.id}", "argument":{stringyfied_argument}}}'
+        return f'{{"id":"{self.id}", "argument":{stringified_argument}}}'
 
 
 class Variable:
     """Represents variable in 'C' language"""
 
-    __slots__ = ('id', 'type', 'name', 'expression', 'name_with_salt')
+    __slots__ = ('id', 'type', 'name', 'name_with_salt', 'is_initialized')
 
-    SALT: ClassVar[str] = 'hsl'
+    _SALT = 'hsl'
 
-    def __init__(self, type_: Literal['int', 'float'], name: str,
-                 expression: Optional[
-                     Union[Variable, Expression, int, float]] = None):
+    def __init__(self, type_: Literal['int', 'float'], name: str):
         self.id = 'variable'
         self.type = type_
         self.name = name
+        self.is_initialized = False
+        self.name_with_salt = f'{self.name}{Variable._SALT}'
+        Program.get_current_function().add_variable(self)
+
+    def generate_ast_representation(self) -> str:
+        if isinstance(self.expression, Expression):
+            stringified_expression = \
+                self.expression.generate_ast_representation()
+        elif isinstance(self.expression, Variable):
+            stringified_expression = f'"{self.expression.name}"'
+        elif is_number(self.expression):
+            stringified_expression = f'"{self.expression}"'
+        else:
+            stringified_expression = ""
+
+        return (f'{{"id":"{self.id}", "type":{self.type},'
+                f' "name":"{self.name}",'
+                f' "expression":{stringified_expression}}}')
+
+
+class VariableInitialization:
+
+    __slots__ = ('id', 'name', 'type', 'expression', 'variable')
+
+    def __init__(
+        self, name: str, type_: Literal['int', 'float'] = None,
+        expression: Optional[Union[Variable, Expression, int, float]] = None
+    ):
+        self.id = 'variable_assignment'
+        self.name = name
+        self.type = type_
         self.expression = expression
-        self.name_with_salt = f'{self.name}{Variable.SALT}'
-        Function.all_variables[self.name] = self
+        self.variable = Program.get_current_function().get_variable(self.name)
+        if self.variable is None and self.type is not None:
+            self.variable = Variable(type_=self.type, name=self.name)
+        self.variable.is_initialized = True
 
-    @classmethod
-    def generate_uninitialized_data_segment(cls):
-        uninitialized_data_segment = []
-        for var in cls.all_variables.values():
-            uninitialized_data_segment.append(f'  {var.name_with_salt} dd ?')
-        return uninitialized_data_segment
-
-    def generate_asm_code(self):
+    def generate_asm_code(self) -> list:
         if self.expression is not None:
             asm_code = []
             if isinstance(self.expression, Expression):
                 asm_code = self.expression.generate_asm_code()
                 asm_code.append('  pop eax')
-                asm_code.append(f'  mov {self.name_with_salt}, eax')
+                asm_code.append(f'  mov {self.variable.name_with_salt}, eax')
             elif isinstance(self.expression, Variable):
                 asm_code.extend((
                     f'  mov eax, {self.expression.name_with_salt}',
-                    f'  mov {self.name_with_salt}, eax'
+                    f'  mov {self.variable.name_with_salt}, eax'
                 ))
             else:
                 asm_code.append(
-                    f'  mov {self.name_with_salt}, {self.expression}')
+                    f'  mov {self.variable.name_with_salt}, {self.expression}')
         else:
             return []
         return asm_code
 
-    def generate_ast_representation(self):
+    def generate_ast_representation(self) -> str:
         if isinstance(self.expression, Expression):
-            stringyfied_expression = \
+            stringified_expression = \
                 self.expression.generate_ast_representation()
         elif isinstance(self.expression, Variable):
-            stringyfied_expression = f'"{self.expression.name}"'
+            stringified_expression = f'"{self.expression.name}"'
         elif is_number(self.expression):
-            stringyfied_expression = f'"{self.expression}"'
+            stringified_expression = f'"{self.expression}"'
         else:
-            stringyfied_expression = ""
+            stringified_expression = ""
 
         return (f'{{"id":"{self.id}", "name":"{self.name}",'
-                f' "type":"{self.type}",'
-                f' "expression":{stringyfied_expression}}}')
+                f' "expression":{stringified_expression}}}')
 
 
 class Expression:
@@ -203,49 +267,49 @@ class Expression:
     __active_regs = []
 
     @classmethod
-    def get_inactive_regs(cls):
+    def get_inactive_regs(cls) -> list[str]:
         return cls.__inactive_regs.copy()
 
     @classmethod
-    def get_active_regs(cls):
+    def get_active_regs(cls) -> list[str]:
         return cls.__active_regs.copy()
 
     @classmethod
-    def get_inactive_reg(cls):
+    def get_inactive_reg(cls) -> Register:
         reg = cls.__inactive_regs.pop(0)
         cls.__active_regs.append(reg)
         return reg
 
     @classmethod
-    def set_reg_active(cls, reg):
+    def set_reg_active(cls, reg: Register) -> None:
         if reg in cls.__inactive_regs:
             cls.__inactive_regs.remove(reg)
             cls.__active_regs.append(reg)
 
     @classmethod
-    def set_reg_inactive(cls, reg):
+    def set_reg_inactive(cls, reg: Register) -> None:
         if reg in cls.__active_regs:
             cls.__inactive_regs.append(reg)
             cls.__active_regs.remove(reg)
 
     @classmethod
-    def operand_is_zero(cls, operand):
-        _is_zero = False
+    def operand_is_zero(cls, operand: Operand) -> bool:
+        is_zero = False
         if isinstance(operand, UnaryExpression):
-            _is_zero = True if cls.operand_is_zero(operand.value) else False
+            is_zero = True if cls.operand_is_zero(operand.value) else False
         elif isinstance(operand, BinaryExpression):
-            _is_zero = True if cls.operand_is_zero(operand.right_operand)\
+            is_zero = True if cls.operand_is_zero(operand.right_operand)\
                 else False
         elif isinstance(operand, Variable):
-            _is_zero = True if cls.operand_is_zero(operand.expression)\
+            is_zero = True if cls.operand_is_zero(operand.expression)\
                 else False
         elif is_number(operand):
-            _is_zero = True if operand == 0 else False
+            is_zero = True if operand == 0 else False
 
-        return _is_zero
+        return is_zero
 
     @staticmethod
-    def _process_operand(operand):
+    def _process_operand(operand) -> tuple[tuple, str]:
         asm_code = []
         if isinstance(operand, UnaryExpression):
             asm_code.extend(operand.generate_asm_code())
@@ -264,7 +328,7 @@ class Expression:
         else:
             operand_in_asm = f'{int(operand)}'
 
-        return asm_code, operand_in_asm
+        return tuple(asm_code), operand_in_asm
 
 
 class FunctionCall(Expression):
@@ -277,9 +341,10 @@ class FunctionCall(Expression):
         self.function_name = function_name
         self.arguments = arguments or list()
 
-        self.function = Program.all_functions.get(self.function_name)
+        # TODO: Rewrite function_name with unique_key
+        self.function = Program.get_function(self.function_name)
 
-    def generate_asm_code(self):
+    def generate_asm_code(self) -> list:
         asm_code = []
         arguments_in_asm = []
 
@@ -316,7 +381,7 @@ class FunctionCall(Expression):
 
         return asm_code
 
-    def generate_ast_representation(self):
+    def generate_ast_representation(self) -> str:
         return (f'{{"id":"{self.id}", "function_name":"{self.function_name}",'
                 f' "arguments":[]}}')
 
@@ -332,7 +397,7 @@ class UnaryExpression(Expression):
         self.argument = argument
         self.operator = operator
 
-    def generate_asm_code(self):
+    def generate_asm_code(self) -> list:
         asm_code = []
 
         asm_code_of_expression,\
@@ -358,19 +423,19 @@ class UnaryExpression(Expression):
 
         return asm_code
 
-    def generate_ast_representation(self):
+    def generate_ast_representation(self) -> str:
         if isinstance(self.value, Expression):
-            stringyfied_value = \
+            stringified_value = \
                 self.value.generate_ast_representation()
         elif isinstance(self.value, Variable):
-            stringyfied_value = f'"{self.value.name}"'
+            stringified_value = f'"{self.value.name}"'
         elif is_number(self.value):
-            stringyfied_value = f'"{self.value}"'
+            stringified_value = f'"{self.value}"'
         else:
-            stringyfied_value = ""
+            stringified_value = ""
 
         return (f'{{"id":"{self.id}", "operator":"{self.operator}",'
-                f' "value":{stringyfied_value}}}')
+                f' "value":{stringified_value}}}')
 
 
 class BinaryExpression(Expression):
@@ -378,15 +443,14 @@ class BinaryExpression(Expression):
 
     __slots__ = ('id', 'left_operand', 'right_operand', 'operator')
 
-    def __init__(self, left_operand: Union[Expression, Variable, int, float],
-                 right_operand: Union[Expression, Variable, int, float],
+    def __init__(self, left_operand: Operand, right_operand: Operand,
                  operator: Literal['/', '*', '==']):
         self.id = 'binary_op'
         self.left_operand = left_operand
         self.right_operand = right_operand
         self.operator = operator
 
-    def generate_asm_code(self):
+    def generate_asm_code(self) -> list:
         asm_code = []
 
         code_of_left_expression,\
@@ -447,30 +511,30 @@ class BinaryExpression(Expression):
 
         return asm_code
 
-    def generate_ast_representation(self):
+    def generate_ast_representation(self) -> str:
         if isinstance(self.left_operand, Expression):
-            stringyfied_left_operand = \
+            stringified_left_operand = \
                 self.left_operand.generate_ast_representation()
         elif isinstance(self.left_operand, Variable):
-            stringyfied_left_operand = f'"{self.left_operand.name}"'
+            stringified_left_operand = f'"{self.left_operand.name}"'
         elif is_number(self.left_operand):
-            stringyfied_left_operand = f'"{self.left_operand}"'
+            stringified_left_operand = f'"{self.left_operand}"'
         else:
-            stringyfied_left_operand = ""
+            stringified_left_operand = ""
 
         if isinstance(self.right_operand, (Expression, Variable)):
-            stringyfied_right_operand = \
+            stringified_right_operand = \
                 self.right_operand.generate_ast_representation()
         elif isinstance(self.right_operand, Variable):
-            stringyfied_right_operand = f'"{self.right_operand.name}"'
+            stringified_right_operand = f'"{self.right_operand.name}"'
         elif is_number(self.right_operand):
-            stringyfied_right_operand = f'"{self.right_operand}"'
+            stringified_right_operand = f'"{self.right_operand}"'
         else:
-            stringyfied_right_operand = ""
+            stringified_right_operand = ""
 
         return (f'{{"id":"{self.id}", "operator":"{self.operator}",'
-                f' "left_operand":{stringyfied_left_operand},'
-                f' "right_operand":{stringyfied_right_operand}}}')
+                f' "left_operand":{stringified_left_operand},'
+                f' "right_operand":{stringified_right_operand}}}')
 
 
 class TernaryExpression(Expression):
@@ -478,17 +542,16 @@ class TernaryExpression(Expression):
 
     __slots__ = ('id', 'left_operand', 'right_operand', 'condition')
 
-    DYNAMIC_SALT: ClassVar[int] = 0
+    __DYNAMIC_SALT: ClassVar[int] = 0
 
-    def __init__(self, left_operand: Union[Expression, Variable, int, float],
-                 right_operand: Union[Expression, Variable, int, float],
-                 condition: Union[Expression, Variable, int, float]):
+    def __init__(self, left_operand: Operand, right_operand: Operand,
+                 condition: Operand):
         self.id = 'ternary_op'
         self.left_operand = left_operand
         self.right_operand = right_operand
         self.condition = condition
 
-    def generate_asm_code(self):
+    def generate_asm_code(self) -> list:
         asm_code = []
 
         code_of_condition, condition_in_asm = \
@@ -529,46 +592,46 @@ class TernaryExpression(Expression):
         asm_code.extend((
             *code_of_condition,
             f'  cmp {condition_in_asm}, 0',
-            f'  je false{self.DYNAMIC_SALT}',
-            f'  jne true{self.DYNAMIC_SALT}',
-            f'  true{self.DYNAMIC_SALT}:',
+            f'  je false{self.__DYNAMIC_SALT}',
+            f'  jne true{self.__DYNAMIC_SALT}',
+            f'  true{self.__DYNAMIC_SALT}:',
             f'  {indentation_separator.join(code_of_left_expression)}',
-            f'    jmp continue{self.DYNAMIC_SALT}',
-            f'  false{self.DYNAMIC_SALT}:',
+            f'    jmp continue{self.__DYNAMIC_SALT}',
+            f'  false{self.__DYNAMIC_SALT}:',
             f'  {indentation_separator.join(code_of_right_expression)}',
-            f'    jmp continue{self.DYNAMIC_SALT}',
+            f'    jmp continue{self.__DYNAMIC_SALT}',
             '',
-            f'  continue{self.DYNAMIC_SALT}:'
+            f'  continue{self.__DYNAMIC_SALT}:'
         ))
 
         for reg in local_active_regs:
             Expression.set_reg_inactive(reg)
 
-        self.DYNAMIC_SALT += 1
+        self.__DYNAMIC_SALT += 1
 
         return asm_code
 
-    def generate_ast_representation(self):
+    def generate_ast_representation(self) -> str:
         if isinstance(self.left_operand, Expression):
-            stringyfied_left_operand = \
+            stringified_left_operand = \
                 self.left_operand.generate_ast_representation()
         elif isinstance(self.right_operand, Variable):
-            stringyfied_left_operand = f'"{self.left_operand.name}"'
+            stringified_left_operand = f'"{self.left_operand.name}"'
         elif is_number(self.left_operand):
-            stringyfied_left_operand = f'"{self.left_operand}"'
+            stringified_left_operand = f'"{self.left_operand}"'
         else:
-            stringyfied_left_operand = ""
+            stringified_left_operand = ""
 
         if isinstance(self.right_operand, Expression):
-            stringyfied_right_operand = \
+            stringified_right_operand = \
                 self.right_operand.generate_ast_representation()
         elif isinstance(self.right_operand, Variable):
-            stringyfied_right_operand = f'"{self.right_operand.name}"'
+            stringified_right_operand = f'"{self.right_operand.name}"'
         elif is_number(self.right_operand):
-            stringyfied_right_operand = f'"{self.right_operand}"'
+            stringified_right_operand = f'"{self.right_operand}"'
         else:
-            stringyfied_right_operand = ""
+            stringified_right_operand = ""
 
         return (f'{{"id":"{self.id}", "condition":"{self.condition}",'
-                f' "left_operand":{stringyfied_left_operand},'
-                f' "right_operand":{stringyfied_right_operand}}}')
+                f' "left_operand":{stringified_left_operand},'
+                f' "right_operand":{stringified_right_operand}}}')

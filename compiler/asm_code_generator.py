@@ -1,4 +1,4 @@
-from compiler.nodes import Function
+from compiler.nodes import Program
 
 
 class AsmCodeGenerator:
@@ -69,10 +69,9 @@ class AsmCodeGenerator:
             'compare endp'
         )
 
-        # FIXME: Generate variables
-        # uninitialized_data_segment = tuple(
-        #     Function.generate_uninitialized_data_segment()
-        # )
+        uninitialized_data_segment = tuple(
+            Program.generate_uninitialized_data_segment()
+        )
 
         code_of_program = self.program.generate_asm_code()
 
@@ -82,7 +81,7 @@ class AsmCodeGenerator:
             *includes,
             '',
             '.data?',
-            # *uninitialized_data_segment,
+            *uninitialized_data_segment,
             '',
             '.code',
             'start:',

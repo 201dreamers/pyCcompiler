@@ -16,6 +16,9 @@ includelib \masm32\lib\kernel32.lib
 includelib \masm32\lib\msvcrt.lib
 
 .data?
+  ahsl dd ?
+  cchsl dd ?
+  bhsl dd ?
 
 .code
 start:
@@ -60,6 +63,10 @@ compare endp
 
 ccchsl proc
   mov ahsl, 8
+  invoke divide, ahsl, 2
+  push eax
+  pop eax
+  mov ahsl, eax
   mov eax, ahsl
   push eax
   pop eax
@@ -67,11 +74,7 @@ ccchsl proc
 ccchsl endp
 
 main proc
-  invoke ccchsl
-  invoke multiply, eax, 2
-  push eax
-  pop eax
-  mov cchsl, eax
+  mov cchsl, 8
   mov bhsl, 2
   invoke ccchsl
   invoke multiply, eax, 2
