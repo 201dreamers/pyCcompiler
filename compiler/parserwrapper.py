@@ -20,7 +20,7 @@ class ParserWrapper:
     def __init__(self):
         self.tokens = [token for token, regexp in LexWrapper.tokens]
         self.precedence = (
-            ('left', ['/=', '=']),
+            ('left', ['=', '/=']),
             ('left', ['COLON']),
             ('left', ['?']),
             ('left', ['==']),
@@ -52,19 +52,22 @@ class ParserWrapper:
 
             return _contents
 
-        @self.pg.production('function : TYPE IDENTIFIER ( ) { function_body }')
-        @self.pg.production('function : TYPE IDENTIFIER ( ) semicolons')
+        @self.pg.production(
+            'function : TYPE IDENTIFIER ( arguments ) { function_body }')
+        @self.pg.production(
+            'function : TYPE IDENTIFIER ( arguments ) semicolons')
         def function(parsed):
-            _function = Function.all_functions.get(parsed[1].value)
+            _function = Program.all_functions.get(parsed[1].value)
             if _function is None:
                 _function = Function(
                     name=parsed[1].value,
                     type_=parsed[0].value,
+                    arguments=parsed[3]
                 )
 
-            if (len_of_parsed := len(parsed)) == 7:
+            if (len_of_parsed := len(parsed)) == 8:
                 has_return_statement = False
-                for line_of_code in parsed[5]:
+                for line_of_code in parsed[6]:
                     if isinstance(line_of_code, Return):
                         has_return_statement = True
                         break
@@ -73,11 +76,15 @@ class ParserWrapper:
                     raise errors.NoReturnStatementInFunctionError(
                         parsed[1].value)
 
-                _function.body = parsed[5]
-            elif len_of_parsed == 5:
+                _function.body = parsed[6]
+            elif len_of_parsed == 6:
                 return
 
             return _function
+
+        @self.pg.production('arguments : ')
+        def arguments():
+            return []
 
         @self.pg.production('function_body : instruction semicolons')
         @self.pg.production(
@@ -98,8 +105,9 @@ class ParserWrapper:
         @self.pg.production('instruction : TYPE IDENTIFIER')
         @self.pg.production('instruction : TYPE IDENTIFIER = expression')
         def instruction(parsed):
+            # BUG: Variable generation when reassign exists
             if parsed[0].name == 'TYPE':
-                if parsed[1].value in Variable.all_variables:
+                if parsed[1].value in Function.all_variables:
                     raise errors.VariableAlreadyExistsError(parsed[1])
                 var = Variable(type_=parsed[0].value, name=parsed[1].value)
                 if len(parsed) == 4:
@@ -151,7 +159,7 @@ class ParserWrapper:
 
         @self.pg.production('function_call : IDENTIFIER ( ) ')
         def function_call(parsed):
-            func = Function.all_functions.get(parsed[0].value)
+            func = Program.all_functions.get(parsed[0].value)
             if func is None:
                 # TODO: Raise error that no such function
                 pass
@@ -160,7 +168,7 @@ class ParserWrapper:
 
         @self.pg.production('variable : IDENTIFIER')
         def variable(parsed):
-            var = Variable.all_variables.get(parsed[0].value)
+            var = Function.all_variables.get(parsed[0].value)
             if var is None:
                 raise errors.VariableDoesNotExistsError(parsed[0])
 

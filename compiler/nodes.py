@@ -22,6 +22,17 @@ class Program:
 
     contents: Union[list, tuple]
     id_: str = 'program'
+    all_functions: ClassVar[dict] = dict()
+    current_function_name: ClassVar[str] = None
+
+    @classmethod
+    def get_current_function(cls):
+        func = cls.all_functions.get(cls.current_function_name)
+        if func is None:
+            # TODO: Throw error that function does not exists
+            pass
+
+        return func
 
     def generate_asm_code(self):
         asm_code = []
@@ -57,7 +68,7 @@ class Function:
     id_: str = 'function'
     arguments: Optional[Union[list, tuple]] = field(default_factory=list)
     body: Optional[Union[list, tuple]] = field(default_factory=list)
-    all_functions: ClassVar[dict] = dict()
+    all_variables: ClassVar[dict] = dict()
     SALT: ClassVar[str] = 'hsl'
 
     def __post_init__(self):
@@ -66,7 +77,7 @@ class Function:
         else:
             self.name_with_salt = f'{self.name}{Function.SALT}'
         key = self.name
-        Function.all_functions[key] = self
+        Program.all_functions[key] = self
 
     def generate_asm_code(self):
         asm_code = [f'{self.name_with_salt} proc']
@@ -136,12 +147,11 @@ class Variable:
     name: str
     expression: Optional[Union[Variable, Expression, int, float]] = None
     id_: str = 'variable'
-    all_variables: ClassVar[dict] = dict()
     SALT: ClassVar[str] = 'hsl'
 
     def __post_init__(self):
         self.name_with_salt = f'{self.name}{Variable.SALT}'
-        Variable.all_variables[self.name] = self
+        Function.all_variables[self.name] = self
 
     @classmethod
     def generate_uninitialized_data_segment(cls):
