@@ -6,7 +6,8 @@ from rply.token import Token
 from compiler import lexer_wrapper
 from compiler.nodes import (Function, Return, UnaryExpression,
                             BinaryExpression, TernaryExpression,
-                            Program, FunctionCall, VariableInitialization)
+                            Program, FunctionCall, VariableInitialization,
+                            Variable)
 from compiler import errors
 
 
@@ -39,38 +40,34 @@ def contents(parsed):
     if (_len_of_parsed := len(parsed)) == 1:
         _contents.append(parsed[0])
     elif _len_of_parsed == 2:
-        parsed[0].append(parsed[1])
         _contents.extend(parsed[0])
-
+        _contents.append(parsed[1])
     return _contents
 
 
 @parser_generator.production(
-    'function : function_initializer { function_body }')
+    'function : function_initializer ( arguments ) { function_body }')
 @parser_generator.production(
-    'function : function_initializer semicolons')
+    'function : function_initializer ( arguments ) semicolons')
 def function(parsed):
     _function = parsed[0]
-
-    if (len_of_parsed := len(parsed)) == 4:
+    _function.arguments = parsed[2]
+    if (len_of_parsed := len(parsed)) == 7:
         has_return_statement = False
-        for line_of_code in parsed[2]:
+        for line_of_code in parsed[5]:
             if isinstance(line_of_code, Return):
                 has_return_statement = True
                 break
 
         if not has_return_statement:
-            raise errors.NoReturnStatementInFunctionError(
-                parsed[1].value)
-
-        _function.body = parsed[2]
-    elif len_of_parsed == 2:
+            raise errors.NoReturnStatementInFunctionError(_function.name)
+        _function.body = parsed[5]
+    elif len_of_parsed == 5:
         return
     return _function
 
 
-@parser_generator.production(
-    'function_initializer : TYPE IDENTIFIER ( arguments )')
+@parser_generator.production('function_initializer : TYPE IDENTIFIER')
 def function_initializer(parsed):
     # TODO: rewrite unique key
     unique_function_key = parsed[1].value
@@ -79,15 +76,23 @@ def function_initializer(parsed):
         _function = Function(
             name=parsed[1].value,
             type_=parsed[0].value,
-            arguments=parsed[3]
         )
 
     return _function
 
 
 @parser_generator.production('arguments : ')
+@parser_generator.production('arguments : TYPE IDENTIFIER')
+@parser_generator.production('arguments : arguments , TYPE IDENTIFIER')
 def arguments(parsed):
-    return []
+    _arguments = []
+    if (len_of_parsed := len(parsed)) in (2, 3):
+        argument = Variable(type_=parsed[0].value, name=parsed[1].value,
+                            is_function_argument=True)
+        if len_of_parsed == 3:
+            _arguments.extend(parsed[0])
+        _arguments.append(argument)
+    return _arguments
 
 
 @parser_generator.production('function_body : instruction semicolons')
@@ -100,7 +105,6 @@ def function_body(parsed):
     elif len_of_parsed == 3:
         _function_body.extend(parsed[0])
         _function_body.append(parsed[1])
-
     return _function_body
 
 
@@ -154,9 +158,6 @@ def expression(parsed):
     elif _len_of_parsed == 3:
         if isinstance(parsed[0], Token) and parsed[0].value == '(':
             return expression([parsed[1]])
-        elif parsed[1].name == '/' and\
-                BinaryExpression.operand_is_zero(parsed[2]):
-            raise errors.DivisionByZeroError(parsed[1])
         else:
             return BinaryExpression(left_operand=parsed[0],
                                     right_operand=parsed[2],
@@ -170,7 +171,7 @@ def expression(parsed):
     return parsed[0]
 
 
-@parser_generator.production('function_call : IDENTIFIER ( ) ')
+@parser_generator.production('function_call : IDENTIFIER ( passed_arguments ) ')
 def function_call(parsed):
     # TODO: rewrite with unique key
     func = Program.get_function(parsed[0].value)
@@ -178,7 +179,21 @@ def function_call(parsed):
         # TODO: Raise error that no such function
         pass
 
-    return FunctionCall(function_name=func.name)
+    return FunctionCall(function_name=func.name, arguments=parsed[2])
+
+
+@parser_generator.production('passed_arguments : ')
+@parser_generator.production('passed_arguments : expression')
+@parser_generator.production(
+    'passed_arguments : passed_arguments , expression')
+def passed_arguments(parsed):
+    _passed_arguments = []
+    if (len_of_parsed := len(parsed)) == 1:
+        _passed_arguments.append(parsed[0])
+    elif len_of_parsed == 2:
+        _passed_arguments.extend(parsed[0])
+        _passed_arguments.append(parsed[1])
+    return _passed_arguments
 
 
 @parser_generator.production('variable : IDENTIFIER')

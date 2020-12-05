@@ -69,10 +69,6 @@ class AsmCodeGenerator:
             'compare endp'
         )
 
-        uninitialized_data_segment = tuple(
-            Program.generate_uninitialized_data_segment()
-        )
-
         code_of_program = self.program.generate_asm_code()
 
         masm_code = (
@@ -81,7 +77,6 @@ class AsmCodeGenerator:
             *includes,
             '',
             '.data?',
-            *uninitialized_data_segment,
             '',
             '.code',
             'start:',

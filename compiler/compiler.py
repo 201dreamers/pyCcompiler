@@ -54,6 +54,7 @@ class Compiler():
 
     def __build_abstract_syntax_tree(self):
         stringified_ast = self.parsed_program.generate_ast_representation()
+        print(f'\n{stringified_ast}\n')
         self.ast = json.loads(stringified_ast)
 
     def __generate_asm_code(self):
