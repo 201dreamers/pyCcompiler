@@ -44,7 +44,11 @@ class Compiler():
                 errors.VariableDoesNotExistsError,
                 errors.DivisionByZeroError,
                 errors.VariableAlreadyExistsError,
-                errors.NoReturnStatementInFunctionError) as err:
+                errors.NoReturnStatementInFunctionError,
+                errors.FunctionDoesNotExistsError,
+                errors.MainFunctionDoesNotExistsError,
+                errors.FunctionAlreadyExistsError,
+                errors.ArgumentsDidNotMatchError) as err:
             print(err.message)
             exit_compiler(1)
         except LexingError as l_err:
@@ -54,7 +58,6 @@ class Compiler():
 
     def __build_abstract_syntax_tree(self):
         stringified_ast = self.parsed_program.generate_ast_representation()
-        print(f'\n{stringified_ast}\n')
         self.ast = json.loads(stringified_ast)
 
     def __generate_asm_code(self):

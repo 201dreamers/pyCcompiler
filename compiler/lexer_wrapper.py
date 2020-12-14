@@ -4,6 +4,8 @@ from rply import LexerGenerator
 
 
 tokens = (
+    ('DO', r'do'),
+    ('WHILE', r'while'),
     ('TYPE', r'\bint\b|\bfloat\b'),
     ('RETURN', r'\breturn\b'),
     ('HEX', r'0[xX][a-fA-F\d]+'),
@@ -16,11 +18,12 @@ tokens = (
     ('}', r'\}'),
     (';', r';'),
     ('-', r'-'),
+    ('*', r'\*'),
+    ('&&', r'&&'),
     ('/=', r'/='),
     ('/', r'/'),
     ('==', r'=='),
     ('=', r'='),
-    ('*', r'\*'),
     (',', r','),
     ('IDENTIFIER', r'[a-z]\w*'),
 )

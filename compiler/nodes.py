@@ -24,6 +24,7 @@ class Program(BasicNode):
 
     __slots__ = ('id', 'contents')
 
+    DYNAMIC_SALT: ClassVar[int] = 0
     __all_functions: ClassVar[dict[str, Function]] = dict()
     __current_function_name: ClassVar[Optional[str]] = None
 
@@ -33,11 +34,11 @@ class Program(BasicNode):
 
     @classmethod
     def add_function(cls, function: Function) -> None:
-        cls.__all_functions[function.unique_key] = function
+        cls.__all_functions[function.name] = function
 
     @classmethod
-    def get_function(cls, unique_key: str) -> Union[Function, None]:
-        return cls.__all_functions.get(unique_key)
+    def get_function(cls, function_name: str) -> Union[Function, None]:
+        return cls.__all_functions.get(function_name)
 
     @classmethod
     def get_functions(cls) -> dict:
@@ -48,15 +49,17 @@ class Program(BasicNode):
         return cls.__all_functions.get(cls.__current_function_name)
 
     @classmethod
-    def set_current_function(cls, function_name: str) -> None:
-        cls.__current_function_name = function_name
+    def set_current_function(cls, function_unique_name: str) -> None:
+        cls.__current_function_name = function_unique_name
 
     def generate_asm_code(self) -> list:
         asm_code = []
         for function in self.contents:
-            if function is None:
+            if function is None or function.name == 'main':
                 continue
             asm_code.extend(function.generate_asm_code())
+
+        asm_code.extend(self.get_function('main').generate_asm_code())
 
         return asm_code
 
@@ -80,7 +83,7 @@ class Function(BasicNode):
     """Represents node of function with its arguments in AST"""
 
     __slots__ = ('id', 'name', 'type', 'arguments', 'body', 'name_with_salt',
-                 'unique_key', '__all_variables')
+                 'unique_name', '__all_variables')
 
     SALT: ClassVar[str] = 'hsl'
 
@@ -92,7 +95,6 @@ class Function(BasicNode):
         self.type = type_
         self.arguments = arguments or list()
         self.body = body or list()
-        self.unique_key = self.name
 
         if self.name == 'main':
             self.name_with_salt = self.name
@@ -102,7 +104,7 @@ class Function(BasicNode):
         self.__all_variables: dict[str, Variable] = dict()
 
         Program.add_function(self)
-        Program.set_current_function(self.unique_key)
+        Program.set_current_function(self.name)
 
     def add_variable(self, variable: Variable) -> None:
         self.__all_variables[variable.name] = variable
@@ -160,7 +162,74 @@ class Function(BasicNode):
         stringified_body = ', '.join(body)
 
         return (f'{{"id":"{self.id}", "name":"{self.name}",'
-                f' "type":"{self.type}", "arguments":[{stringified_arguments}],'
+                f' "type":"{self.type}",'
+                f' "arguments":[{stringified_arguments}],'
+                f' "body":[{stringified_body}]}}')
+
+
+class DoWhileLoop(BasicNode):
+
+    __slots__ = ('id', 'body', 'expression')
+
+    def __init__(self, body, expression):
+        self.id = 'do_while_loop'
+        self.body = body
+        self.expression = expression
+
+    def generate_asm_code(self) -> list:
+        salt = Program.DYNAMIC_SALT
+        Program.DYNAMIC_SALT += 1
+        print(f'{self.expression=}')
+
+        asm_code = [f'  continue{salt}:']
+        for instruction in self.body:
+            if instruction is None or isinstance(instruction, Variable):
+                continue
+            asm_code.extend(instruction.generate_asm_code())
+
+        asm_code_of_expression,\
+            expression_in_asm = Expression._process_operand(self.expression)
+
+        local_active_regs = []
+
+        if expression_in_asm == 'reg':
+            expression_in_asm = Expression.get_inactive_reg()
+            asm_code_of_expression.append(f'  pop {expression_in_asm}')
+            local_active_regs.append(expression_in_asm)
+        elif is_number(expression_in_asm):
+            reg = Expression.get_inactive_reg()
+            asm_code_of_expression.append(f'  mov {reg}, {expression_in_asm}')
+            expression_in_asm = reg
+            local_active_regs.append(reg)
+
+        asm_code.extend((*asm_code_of_expression,
+                         f'  cmp {expression_in_asm}, 0',
+                         f'  je break{salt}',
+                         f'  jne continue{salt}',
+                         f'  break{salt}:'))
+
+        for reg in local_active_regs:
+            Expression.set_reg_inactive(reg)
+        return asm_code
+
+    def generate_ast_representation(self) -> str:
+        if isinstance(self.expression, Expression):
+            stringified_expression = \
+                self.expression.generate_ast_representation()
+        elif isinstance(self.expression, Variable):
+            stringified_expression = f'"{self.expression.name}"'
+        else:
+            stringified_expression = f'"{self.expression}"'
+
+        body = []
+        for instruction in self.body:
+            if instruction is None:
+                continue
+            body.append(instruction.generate_ast_representation())
+
+        stringified_body = ', '.join(body)
+
+        return (f'{{"id":"{self.id}", "body":{stringified_expression},'
                 f' "body":[{stringified_body}]}}')
 
 
@@ -226,7 +295,7 @@ class VariableInitialization(BasicNode):
         self, name: str, type_: Literal['int', 'float'] = None,
         expression: Optional[Union[Variable, Expression, int, float]] = None
     ):
-        self.id = 'variable_assignment'
+        self.id = 'variable_initialization'
         self.name = name
         self.type = type_
         self.expression = expression
@@ -319,7 +388,7 @@ class Expression(BasicNode):
             operand_in_asm = 'eax'
         else:
             operand_in_asm = f'{int(operand)}'
-        return tuple(asm_code), operand_in_asm
+        return asm_code, operand_in_asm
 
 
 class FunctionCall(Expression):
@@ -331,8 +400,6 @@ class FunctionCall(Expression):
         self.id = 'function_call'
         self.function_name = function_name
         self.arguments = arguments or list()
-
-        # TODO: Rewrite function_name with unique_key
         self.function = Program.get_function(self.function_name)
 
     def generate_asm_code(self) -> list:
@@ -367,7 +434,10 @@ class FunctionCall(Expression):
             if reg in arguments_in_asm:
                 Expression.set_reg_inactive(reg)
 
-        Expression.set_reg_active('eax')
+        asm_code.append('  push eax')
+
+        Expression.set_reg_inactive('eax')
+
         return asm_code
 
     def generate_ast_representation(self) -> str:
@@ -488,6 +558,13 @@ class BinaryExpression(Expression):
                  f'{left_operand_in_asm}, '
                  f'{right_operand_in_asm}')
             )
+        elif self.operator == '&&':
+            # TODO mark here
+            asm_code.append(
+                ('  invoke logical_and,'
+                 f' {left_operand_in_asm},'
+                 f' {right_operand_in_asm}')
+            )
 
         asm_code.append('  push eax')
 
@@ -528,8 +605,6 @@ class TernaryExpression(Expression):
 
     __slots__ = ('id', 'left_operand', 'right_operand', 'condition')
 
-    __DYNAMIC_SALT: ClassVar[int] = 0
-
     def __init__(self, left_operand: Operand, right_operand: Operand,
                  condition: Operand):
         self.id = 'ternary_op'
@@ -538,6 +613,9 @@ class TernaryExpression(Expression):
         self.condition = condition
 
     def generate_asm_code(self) -> list:
+        salt = Program.DYNAMIC_SALT
+        Program.DYNAMIC_SALT += 1
+
         asm_code = []
 
         code_of_condition, condition_in_asm = \
@@ -578,29 +656,37 @@ class TernaryExpression(Expression):
         asm_code.extend((
             *code_of_condition,
             f'  cmp {condition_in_asm}, 0',
-            f'  je false{self.__DYNAMIC_SALT}',
-            f'  jne true{self.__DYNAMIC_SALT}',
-            f'  true{self.__DYNAMIC_SALT}:',
+            f'  je false{salt}',
+            f'  jne true{salt}',
+            f'  true{salt}:',
             f'  {indentation_separator.join(code_of_left_expression)}',
-            f'    jmp continue{self.__DYNAMIC_SALT}',
-            f'  false{self.__DYNAMIC_SALT}:',
+            f'    jmp continue{salt}',
+            f'  false{salt}:',
             f'  {indentation_separator.join(code_of_right_expression)}',
-            f'    jmp continue{self.__DYNAMIC_SALT}',
+            f'    jmp continue{salt}',
             '',
-            f'  continue{self.__DYNAMIC_SALT}:'
+            f'  continue{salt}:'
         ))
 
         for reg in local_active_regs:
             Expression.set_reg_inactive(reg)
-
-        self.__DYNAMIC_SALT += 1
         return asm_code
 
     def generate_ast_representation(self) -> str:
+        if isinstance(self.condition, Expression):
+            stringified_condition = \
+                self.condition.generate_ast_representation()
+        elif isinstance(self.condition, Variable):
+            stringified_condition = f'"{self.condition.name}"'
+        elif is_number(self.condition):
+            stringified_condition = f'"{self.condition}"'
+        else:
+            stringified_condition = ""
+
         if isinstance(self.left_operand, Expression):
             stringified_left_operand = \
                 self.left_operand.generate_ast_representation()
-        elif isinstance(self.right_operand, Variable):
+        elif isinstance(self.left_operand, Variable):
             stringified_left_operand = f'"{self.left_operand.name}"'
         elif is_number(self.left_operand):
             stringified_left_operand = f'"{self.left_operand}"'
@@ -616,6 +702,6 @@ class TernaryExpression(Expression):
             stringified_right_operand = f'"{self.right_operand}"'
         else:
             stringified_right_operand = ""
-        return (f'{{"id":"{self.id}", "condition":"{self.condition}",'
+        return (f'{{"id":"{self.id}", "condition":{stringified_condition},'
                 f' "left_operand":{stringified_left_operand},'
                 f' "right_operand":{stringified_right_operand}}}')

@@ -41,9 +41,8 @@ divide proc num1:DWORD, num2:DWORD
 divide endp
 
 compare proc num1:DWORD, num2:DWORD
-  push ebx
-  mov ebx, num2
-  cmp num1, ebx
+  mov eax, num2
+  cmp num1, eax
   je equal
   jne notequal
   equal:
@@ -53,35 +52,70 @@ compare proc num1:DWORD, num2:DWORD
     mov eax, 0
     jmp stop
   stop:
-    pop ebx
     ret
   jmp stop
 compare endp
 
-ccchsl proc bhsl:DWORD
-  local ahsl:DWORD
-  mov ahsl, 8
-  invoke divide, ahsl, 2
-  push eax
-  pop eax
-  mov ahsl, eax
-  mov eax, ahsl
-  push eax
-  pop eax
-  ret
-ccchsl endp
+logical_and proc num1:DWORD, num2:DWORD
+  mov eax, num1
+  cmp eax, 0
+  je retfalse
+  jne secondcheck
+  secondcheck:
+    mov eax, num2
+    cmp eax, 0
+    je retfalse
+    jne rettrue
+  rettrue:
+    mov eax, 1
+    jmp stop
+  retfalse:
+    mov eax, 0
+    jmp stop
+  stop:
+    ret
+  jmp stop
+logical_and endp
 
 main proc 
-  local cchsl:DWORD
+  local chsl:DWORD
+  local ahsl:DWORD
   local bhsl:DWORD
-  mov cchsl, 8
-  mov bhsl, 2
-  invoke ccchsl, bhsl
-  invoke multiply, eax, 2
+  mov chsl, 8
+  mov bhsl, 1
+  continue0:
+  invoke divide, chsl, 2
   push eax
   pop eax
-  mov cchsl, eax
-  invoke multiply, cchsl, 2
+  mov chsl, eax
+  invoke multiply, bhsl, 2
+  push eax
+  pop eax
+  mov bhsl, eax
+  invoke compare, chsl, 1
+  push eax
+  pop eax
+  cmp eax, 0
+  je false1
+  jne true1
+  true1:
+    mov ebx, 0
+    push ebx
+    jmp continue1
+  false1:
+    mov ecx, 1
+    push ecx
+    jmp continue1
+
+  continue1:
+  pop eax
+  mov ahsl, eax
+  mov edx, 0
+  cmp edx, 0
+  je break0
+  jne continue0
+  break0:
+  mov eax, bhsl
   push eax
   pop eax
   ret

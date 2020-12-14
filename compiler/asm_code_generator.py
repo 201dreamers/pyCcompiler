@@ -1,6 +1,3 @@
-from compiler.nodes import Program
-
-
 class AsmCodeGenerator:
     """Class that creates assembly (masm) code from 'C' source code"""
 
@@ -15,7 +12,7 @@ class AsmCodeGenerator:
             'option casemap :none',
         )
 
-        # TODO Add return_result procedure to masm
+        # TODO?: Add return_result procedure to masm
         includes = (
             'include \\masm32\\include\\windows.inc',
             'include \\masm32\\macros\\macros.asm',
@@ -51,9 +48,8 @@ class AsmCodeGenerator:
 
         comparison_procedure = (
             'compare proc num1:DWORD, num2:DWORD',
-            '  push ebx',
-            '  mov ebx, num2',
-            '  cmp num1, ebx',
+            '  mov eax, num2',
+            '  cmp num1, eax',
             '  je equal',
             '  jne notequal',
             '  equal:',
@@ -63,10 +59,32 @@ class AsmCodeGenerator:
             '    mov eax, 0',
             '    jmp stop',
             '  stop:',
-            '    pop ebx',
             '    ret',
             '  jmp stop',
             'compare endp'
+        )
+
+        logical_and_procedure = (
+            'logical_and proc num1:DWORD, num2:DWORD',
+            '  mov eax, num1',
+            '  cmp eax, 0',
+            '  je retfalse',
+            '  jne secondcheck',
+            '  secondcheck:',
+            '    mov eax, num2',
+            '    cmp eax, 0',
+            '    je retfalse',
+            '    jne rettrue',
+            '  rettrue:',
+            '    mov eax, 1',
+            '    jmp stop',
+            '  retfalse:',
+            '    mov eax, 0',
+            '    jmp stop',
+            '  stop:',
+            '    ret',
+            '  jmp stop',
+            'logical_and endp'
         )
 
         code_of_program = self.program.generate_asm_code()
@@ -92,6 +110,8 @@ class AsmCodeGenerator:
             *division_procedure,
             '',
             *comparison_procedure,
+            '',
+            *logical_and_procedure,
             '',
             *code_of_program,
             '',
