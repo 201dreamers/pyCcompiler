@@ -171,10 +171,10 @@ class DoWhileLoop(BasicNode):
 
     __slots__ = ('id', 'body', 'expression')
 
-    def __init__(self, body, expression):
+    def __init__(self, body: list, expression: Operand = None):
         self.id = 'do_while_loop'
         self.body = body
-        self.expression = expression
+        self.expression = expression or 1
 
     def generate_asm_code(self) -> list:
         salt = Program.DYNAMIC_SALT
