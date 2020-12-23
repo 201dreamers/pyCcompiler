@@ -13,14 +13,17 @@ from compiler import errors
 
 token_names = [token_name for token_name, _ in lexer_wrapper.tokens]
 precedence = (
+    ('right', [',']),
     ('left', ['/=', '=']),
     ('left', ['BREAK', 'CONTINUE']),
     ('left', ['COLON']),
     ('left', ['?']),
-    ('left', ['&&']),
+    ('left', ['OR']),
+    ('left', ['AND']),
     ('left', ['==']),
+    ('left', ['<']),
+    ('left', ['+', '-']),
     ('left', ['*', '/']),
-    ('left', ['-']),
     ('left', ['('])
 )
 parser_generator = ParserGenerator(token_names, precedence=precedence)
@@ -183,12 +186,17 @@ def loop_expression(parsed):
     return parsed[0] if len(parsed) == 1 else None
 
 
-@parser_generator.production('expression : number | variable | - expression')
+@parser_generator.production('expression : number | variable')
+@parser_generator.production('expression : - expression')
 @parser_generator.production('expression : function_call')
 @parser_generator.production('expression : expression == expression')
-@parser_generator.production('expression : expression && expression')
+@parser_generator.production('expression : expression < expression')
+@parser_generator.production('expression : expression OR expression')
+@parser_generator.production('expression : expression AND expression')
 @parser_generator.production('expression : expression * expression')
 @parser_generator.production('expression : expression / expression')
+@parser_generator.production('expression : expression + expression')
+@parser_generator.production('expression : expression - expression')
 @parser_generator.production(
     'expression : expression ? expression COLON expression')
 @parser_generator.production('expression : ( expression )')

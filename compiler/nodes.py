@@ -387,7 +387,7 @@ class Expression(BasicNode):
             operand_in_asm = operand.name_with_salt
         elif isinstance(operand, FunctionCall):
             asm_code.extend(operand.generate_asm_code())
-            operand_in_asm = 'eax'
+            operand_in_asm = 'reg'
         else:
             operand_in_asm = f'{int(operand)}'
         return asm_code, operand_in_asm
@@ -561,9 +561,32 @@ class BinaryExpression(Expression):
                  f'{right_operand_in_asm}')
             )
         elif self.operator == '&&':
-            # TODO mark here
             asm_code.append(
                 ('  invoke logical_and,'
+                 f' {left_operand_in_asm},'
+                 f' {right_operand_in_asm}')
+            )
+        elif self.operator == '||':
+            asm_code.append(
+                ('  invoke logical_or,'
+                 f' {left_operand_in_asm},'
+                 f' {right_operand_in_asm}')
+            )
+        elif self.operator == '<':
+            asm_code.append(
+                ('  invoke lcompare,'
+                 f' {left_operand_in_asm},'
+                 f' {right_operand_in_asm}')
+            )
+        elif self.operator == '+':
+            asm_code.append(
+                ('  invoke summarize,'
+                 f' {left_operand_in_asm},'
+                 f' {right_operand_in_asm}')
+            )
+        elif self.operator == '-':
+            asm_code.append(
+                ('  invoke subtract,'
                  f' {left_operand_in_asm},'
                  f' {right_operand_in_asm}')
             )

@@ -46,6 +46,22 @@ class AsmCodeGenerator:
             'multiply endp'
         )
 
+        summarization_procedure = (
+            'summarize proc num1:DWORD, num2:DWORD',
+            '  mov eax, num1',
+            '  add eax, num2',
+            '  ret',
+            'summarize endp'
+        )
+
+        subtraction_procedure = (
+            'subtract proc num1:DWORD, num2:DWORD',
+            '  mov eax, num1',
+            '  sub eax, num2',
+            '  ret',
+            'subtract endp'
+        )
+
         comparison_procedure = (
             'compare proc num1:DWORD, num2:DWORD',
             '  mov eax, num2',
@@ -64,7 +80,25 @@ class AsmCodeGenerator:
             'compare endp'
         )
 
-        logical_and_procedure = (
+        lcomparison_procedure = (
+            'lcompare proc num1:DWORD, num2:DWORD',
+            '  mov eax, num2',
+            '  cmp num1, eax',
+            '  jl less',
+            '  jge notless',
+            '  less:',
+            '    mov eax, 1',
+            '    jmp stop',
+            '  notless:',
+            '    mov eax, 0',
+            '    jmp stop',
+            '  stop:',
+            '    ret',
+            '  jmp stop',
+            'lcompare endp'
+        )
+
+        logical_AND_procedure = (
             'logical_and proc num1:DWORD, num2:DWORD',
             '  mov eax, num1',
             '  cmp eax, 0',
@@ -87,6 +121,29 @@ class AsmCodeGenerator:
             'logical_and endp'
         )
 
+        logical_OR_procedure = (
+            'logical_or proc num1:DWORD, num2:DWORD',
+            '  mov eax, num1',
+            '  cmp eax, 0',
+            '  je secondcheck',
+            '  jne rettrue',
+            '  secondcheck:',
+            '    mov eax, num2',
+            '    cmp eax, 0',
+            '    je retfalse',
+            '    jne rettrue',
+            '  rettrue:',
+            '    mov eax, 1',
+            '    jmp stop',
+            '  retfalse:',
+            '    mov eax, 0',
+            '    jmp stop',
+            '  stop:',
+            '    ret',
+            '  jmp stop',
+            'logical_or endp'
+        )
+
         code_of_program = self.program.generate_asm_code()
 
         masm_code = (
@@ -94,14 +151,10 @@ class AsmCodeGenerator:
             '',
             *includes,
             '',
-            '.data?',
-            '',
             '.code',
             'start:',
-            '  print chr$(13, 10, "-- Result of the source code --", 13, 10)',
             '  call main',
-            '  print str$(eax)',
-            '  print chr$(13, 10)',
+            r'  printf("\n-- Result of the source code --\n%d\n", eax)',
             '  mov eax, input("To exit press <Enter>")',
             '  exit',
             '',
@@ -109,9 +162,17 @@ class AsmCodeGenerator:
             '',
             *division_procedure,
             '',
+            *summarization_procedure,
+            '',
+            *subtraction_procedure,
+            '',
             *comparison_procedure,
             '',
-            *logical_and_procedure,
+            *lcomparison_procedure,
+            '',
+            *logical_AND_procedure,
+            '',
+            *logical_OR_procedure,
             '',
             *code_of_program,
             '',
