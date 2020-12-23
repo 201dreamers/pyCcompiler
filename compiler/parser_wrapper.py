@@ -14,6 +14,7 @@ from compiler import errors
 token_names = [token_name for token_name, _ in lexer_wrapper.tokens]
 precedence = (
     ('left', ['/=', '=']),
+    ('left', ['BREAK', 'CONTINUE']),
     ('left', ['COLON']),
     ('left', ['?']),
     ('left', ['&&']),
@@ -122,7 +123,10 @@ def body(parsed):
 @parser_generator.production('instruction : IDENTIFIER /= expression')
 @parser_generator.production('instruction : TYPE IDENTIFIER')
 @parser_generator.production('instruction : TYPE IDENTIFIER = expression')
-@parser_generator.production('instruction : DO { body } WHILE ( expression )')
+@parser_generator.production('instruction : BREAK')
+@parser_generator.production('instruction : CONTINUE')
+@parser_generator.production(
+    'instruction : DO { loop_body } WHILE ( loop_expression )')
 def instruction(parsed):
     current_function = Program.get_current_function()
 
@@ -136,7 +140,6 @@ def instruction(parsed):
             var_assignment.expression = parsed[3]
             return var_assignment
         return
-
     elif parsed[0].name == 'IDENTIFIER':
         var_assignment = VariableInitialization(name=parsed[0].value)
         if parsed[1].name == '=':
@@ -149,12 +152,35 @@ def instruction(parsed):
                 operator='/'
             )
         return var_assignment
-
     elif parsed[0].name == 'RETURN':
         return Return(argument=parsed[1])
-
     elif parsed[0].name == 'DO':
         return DoWhileLoop(body=parsed[2], expression=parsed[6])
+    elif parsed[0].name in ('CONTINUE', 'BREAK'):
+        return parsed[0].value
+
+
+@parser_generator.production('loop_body : instruction semicolons')
+@parser_generator.production('loop_body : BREAK semicolons')
+@parser_generator.production('loop_body : CONTINUE semicolons')
+@parser_generator.production('loop_body : loop_body instruction semicolons')
+def loop_body(parsed):
+    _body = []
+    if (len_of_parsed := len(parsed)) == 2:
+        if isinstance(parsed[0], Token):
+            _body.append(parsed[0].value)
+        else:
+            _body.append(parsed[0])
+    elif len_of_parsed == 3:
+        _body.extend(parsed[0])
+        _body.append(parsed[1])
+    return _body
+
+
+@parser_generator.production('loop_expression : ')
+@parser_generator.production('loop_expression : expression')
+def loop_expression(parsed):
+    return parsed[0] if len(parsed) == 1 else None
 
 
 @parser_generator.production('expression : number | variable | - expression')

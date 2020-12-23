@@ -179,13 +179,15 @@ class DoWhileLoop(BasicNode):
     def generate_asm_code(self) -> list:
         salt = Program.DYNAMIC_SALT
         Program.DYNAMIC_SALT += 1
-        print(f'{self.expression=}')
 
         asm_code = [f'  continue{salt}:']
         for instruction in self.body:
             if instruction is None or isinstance(instruction, Variable):
                 continue
-            asm_code.extend(instruction.generate_asm_code())
+            if instruction in ('break', 'continue'):
+                asm_code.append(f'  jmp {instruction}{salt}')
+            else:
+                asm_code.extend(instruction.generate_asm_code())
 
         asm_code_of_expression,\
             expression_in_asm = Expression._process_operand(self.expression)
@@ -223,13 +225,13 @@ class DoWhileLoop(BasicNode):
 
         body = []
         for instruction in self.body:
-            if instruction is None:
+            if instruction in ('break', 'continue', None):
                 continue
             body.append(instruction.generate_ast_representation())
 
         stringified_body = ', '.join(body)
 
-        return (f'{{"id":"{self.id}", "body":{stringified_expression},'
+        return (f'{{"id":"{self.id}", "expression":{stringified_expression},'
                 f' "body":[{stringified_body}]}}')
 
 
@@ -448,12 +450,12 @@ class FunctionCall(Expression):
 class UnaryExpression(Expression):
     """Represents unary operation in 'C' language"""
 
-    __slots__ = ('id', 'argument', 'operator')
+    __slots__ = ('id', 'value', 'operator')
 
-    def __init__(self, argument: Union[int, float, Variable, Expression],
+    def __init__(self, value: Union[int, float, Variable, Expression],
                  operator: str = '-'):
         self.id = 'unary_op'
-        self.argument = argument
+        self.value = value
         self.operator = operator
 
     def generate_asm_code(self) -> list:

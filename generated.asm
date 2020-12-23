@@ -78,44 +78,26 @@ logical_and proc num1:DWORD, num2:DWORD
 logical_and endp
 
 main proc 
-  local chsl:DWORD
-  local ahsl:DWORD
-  local bhsl:DWORD
-  mov chsl, 8
-  mov bhsl, 1
+  local var1hsl:DWORD
+  local var2hsl:DWORD
+  mov var1hsl, 16
+  mov var2hsl, 18
   continue0:
-  invoke divide, chsl, 2
+  invoke divide, var1hsl, 2
   push eax
   pop eax
-  mov chsl, eax
-  invoke multiply, bhsl, 2
+  mov var1hsl, eax
+  jmp continue0
+  invoke divide, var2hsl, 2
   push eax
   pop eax
-  mov bhsl, eax
-  invoke compare, chsl, 1
-  push eax
-  pop eax
+  mov var2hsl, eax
+  mov eax, 1
   cmp eax, 0
-  je false1
-  jne true1
-  true1:
-    mov ebx, 0
-    push ebx
-    jmp continue1
-  false1:
-    mov ecx, 1
-    push ecx
-    jmp continue1
-
-  continue1:
-  pop eax
-  mov ahsl, eax
-  mov edx, 0
-  cmp edx, 0
   je break0
   jne continue0
   break0:
-  mov eax, bhsl
+  mov eax, var1hsl
   push eax
   pop eax
   ret
